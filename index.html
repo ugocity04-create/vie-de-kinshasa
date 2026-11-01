@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#0b1a33">
+    <title>La vie de Kinshasa</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="images/icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+      /* Styles du menu, copiés ici pour être sûrs qu'ils s'appliquent */
+      :root{--bg:#0b1a33;--card:#13294d;--line:#25406e;--text:#f4f1e8;--muted:#9db0d0;--gold:#f7c948}
+      #modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; }
+      .sheet { width: 100%; max-width: 480px; max-height: 82vh; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 14px; }
+      .sheet header { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+      .sheet h2 { color: var(--gold); font-size: 1.3rem; } .sheet header p { color: var(--muted); font-size: .85rem; }
+      #m-close { background: none; border: none; color: var(--text); font-size: 1.3rem; height: 32px; padding: 0 8px; }
+      #m-body { display: grid; gap: 8px; }
+      .act { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; text-align: left; }
+      .act small { color: var(--muted); } .act:disabled { opacity: .45; }
+      .act:active:not(:disabled) { background: var(--line); }
+      .event { background: #3a2a0c; border: 1px solid var(--gold); border-radius: 12px; padding: 12px; }
+      .hint { color: var(--muted); font-size: .85rem; }
+      @media (min-width: 700px) { #modal { align-items: center; } .sheet { border-radius: 18px; } }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <canvas id="overlay"></canvas>
+
+    <div id="hud">
+      <div class="row">
+        <div class="pill"><span id="sun">☀️</span> <b id="clock"></b> <small id="day"></small></div>
+        <div class="pill money" id="money"></div>
+        <button id="reset" class="pill" aria-label="Recommencer">↺</button>
+      </div>
+      <div class="side">
+        <button id="phone-btn" class="pill">📱<i id="phone-badge" class="dot" hidden>0</i></button><button id="snd" class="pill">🔊</button>
+      </div>
+      <div class="bars">
+        <div class="bar"><label id="lbl-energy"></label><span><i id="b-energy" class="e"></i></span></div>
+        <div class="bar"><label id="lbl-food"></label><span><i id="b-food" class="f"></i></span></div>
+        <div class="bar"><label id="lbl-health"></label><span><i id="b-health" class="h"></i></span></div>
+        <small id="rep"></small>
+      </div>
+      <div class="mission" id="mission"></div>
+      <ul id="toasts"></ul>
+    </div>
+
+    <div id="stick"><div id="knob"></div></div>
+    <button id="act" hidden></button>
+
+    <div id="phone" hidden></div>
+    <div id="ff" hidden><div><p id="ff-text"></p><div class="pbar"><i id="ff-bar"></i></div></div></div>
+
+    <div id="modal" hidden>
+      <div class="sheet">
+       <header><div><h2 id="m-title"></h2><p id="m-sub"></p></div><button id="m-close">✕</button></header>
+        <div id="m-body"></div>
+      </div>
+    </div>
+
+    <script src="data/fr.js"></script>
+    <script src="data/config.js"></script>
+    <script src="data/world.js"></script>
+    <script src="data/jobs.js"></script>
+    <script src="data/events.js"></script>
+    <script src="data/shop.js"></script>
+    <script src="data/missions.js"></script>
+    <script src="data/interiors.js"></script>
+    <script src="audio.js"></script>
+    <script src="net.js"></script>
+    <script src="glb.js"></script>
+    <script src="render3d.js"></script>
+    <script src="phone.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>
