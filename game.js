@@ -468,3 +468,4 @@
   if (!S.started) openStart(); else { toast(T.moveHint); dailyReward(); }
   requestAnimationFrame(frame);
 })();
+ 
