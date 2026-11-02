@@ -2,32 +2,27 @@
 const Phone = (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
-  const CONTACTS = [
-    { id: "maman", name: "Maman", emoji: "👩🏾", lines: ["Mon fils, n'oublie pas de manger !", "Le loyer tombe tous les 7 jours. Garde 14 000 FC de côté.", "Dors bien, la ville fatigue.", "Je suis fière de toi."], rep: ["Courage, mon enfant !", "Fais attention à toi dans les rues de Kin.", "Je prie pour toi."], kw: { argent: "Travaille dur et épargne, ça viendra.", salut: "Mbote mwana ! Tu vas bien ?", mbote: "Mbote mwana ! Tu as mangé ?" } },
-    { id: "jean", name: "Jean (ami)", emoji: "🧑🏾", lines: ["Tu as essayé l'usine de Limete ? Ça paie bien.", "On cherche des vendeurs de légumes à N'djili.", "Le bureau de Gombe recrute, mais il faut de la réputation.", "Tu as vu le pont vers Brazzaville ? Magnifique la nuit !"], rep: ["Ha ha, d'accord !", "On se voit au Marché Central.", "Ça marche, mon frère."], kw: { job: "Va à l'usine ou au bureau, ça paie le mieux.", travail: "Commence au marché, puis monte en réputation.", argent: "Le kiosque rapporte 8 000 FC chaque nuit !" } },
-    { id: "patron", name: "Patron de Gombe", emoji: "👔", lines: ["Le bureau de Gombe cherche un commis (réputation 12).", "Le travail sérieux est toujours récompensé."], rep: ["Montre-moi ce que tu sais faire.", "Passe au bureau entre 8h et 17h."], kw: {} },
-    { id: "banque", name: "Banque", emoji: "🏦", lines: ["Pense à ouvrir ton kiosque : 150 000 FC.", "Une moto te fera gagner du temps : 400 000 FC."], rep: ["Nous sommes à votre service."], kw: {} }
-  ];
-  let open = false, app = "home", thread = null, world = [], nextAuto = 60, el;
+  let open = false, app = "home", thread = null, world = [], el;
   const S = () => G.S;
   const chats = () => (S().chats = S().chats || {});
   const th = (id) => (chats()[id] = chats()[id] || { msgs: [], unread: 0 });
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-  function unreadTotal() { return Object.values(chats()).reduce((a, c) => a + (c.unread || 0), 0); }
+  function unreadTotal() { return Object.keys(chats()).reduce((a, k) => a + (k === "monde" || k.startsWith("d:") ? chats()[k].unread || 0 : 0), 0); }
+  const dkey = (name) => "d:" + String(name).replace(/^@/, "").toLowerCase();
   function badge() { const n = unreadTotal(), b = $("phone-badge"); b.textContent = n; b.hidden = !n; }
   function add(id, me, text) { const t = th(id); t.msgs.push({ me, text, ts: Date.now() }); t.msgs = t.msgs.slice(-40); if (!me && !(open && thread === id)) t.unread = (t.unread || 0) + 1; badge(); if (open) draw(); }
-  function reply(c, text) {
-    const low = text.toLowerCase(); let r = null; Object.keys(c.kw).forEach((k) => { if (low.includes(k)) r = c.kw[k]; });
-    setTimeout(() => { add(c.id, false, r || c.rep[Math.floor(Math.random() * c.rep.length)]); Sound.play("msg"); }, 1200 + Math.random() * 1800);
-  }
   function send(text) {
     text = text.trim(); if (!text || !thread) return false;
-    if (thread === "monde") { if (Net.status !== "online") { G.toast(Net.status === "connecting" ? "Connexion au serveur… patiente (jusqu'à 1 minute)" : "Serveur hors ligne : message non envoyé"); return false; } Net.chat(text); return true; }
-    if (thread.startsWith("p:")) { const id = thread.slice(2); add(thread, true, text); Net.dm(id, text); return true; }
-    add(thread, true, text); const c = CONTACTS.find((q) => q.id === thread); if (c) reply(c, text);
+    if (Net.status !== "online") { G.toast(Net.status === "connecting" ? "Connexion au serveur… patiente (jusqu'à 1 minute)" : "Serveur hors ligne : message non envoyé"); return false; }
+    if (thread === "monde") { Net.chat(text); return true; }
+    const t = th(thread), who = Object.values(Net.players).find((q) => q.name.toLowerCase() === (t.name || "").toLowerCase());
+    if (!who) { G.toast((t.name || "Ce joueur") + " n'est pas en ligne : message non envoyé"); return false; }
+    add(thread, true, text); Net.dm(who.name, text); return true;
   }
   Net.on("chat", (d) => { world.push(d); world = world.slice(-60); if (open && thread === "monde") draw(); else if (d.id !== Net.id) { th("monde").unread = (th("monde").unread || 0) + 1; badge(); } });
-  Net.on("dm", (d) => { const t = th("p:" + d.from); t.name = d.name; add("p:" + d.from, false, d.text); Sound.play("msg"); });
+  Net.on("dm", (d) => { const k = dkey(d.name); th(k).name = d.name; add(k, false, d.text); Sound.play("msg"); G.toast("💬 " + d.name + " : " + d.text.slice(0, 40)); });
+  Net.on("you", (nm) => { if (nm && S().name !== nm) { S().name = nm; G.save(); } });
+  Net.on("fail", (to) => G.toast("@" + to + " n'est pas en ligne"));
   Net.on("status", () => { if (open) draw(); });
   function draw() {
     const body = $("ph-body"), s = S(); let h = "";
@@ -39,14 +34,15 @@ const Phone = (function () {
       h = '<div class="apps">' + apps.map((a) => '<button data-app="' + a[0] + '"><span>' + a[1] + (a[0] === "msg" && unreadTotal() ? '<i class="dot">' + unreadTotal() + "</i>" : "") + "</span>" + a[2] + "</button>").join("") + "</div>";
     } else if (app === "msg" && !thread) {
       const row = (id, em, nm, last, un) => '<button class="prow" data-th="' + id + '"><b>' + em + "</b><div><strong>" + esc(nm) + "</strong><small>" + esc(last || "") + "</small></div>" + (un ? '<i class="dot">' + un + "</i>" : "") + "</button>";
-      h = row("monde", "🌍", "Chat mondial", Net.status === "online" ? "Parle avec les joueurs en ligne" : "Serveur hors ligne", th("monde").unread);
-      CONTACTS.forEach((c) => { const t = th(c.id), l = t.msgs[t.msgs.length - 1]; h += row(c.id, c.emoji, c.name, l ? l.text : "", t.unread); });
-      const ps = Object.values(Net.players); if (ps.length) h += "<h4>Joueurs en ligne</h4>"; ps.forEach((p) => { const t = th("p:" + p.id), l = t.msgs[t.msgs.length - 1]; h += row("p:" + p.id, "🧑", p.name, l ? l.text : "Envoyer un message", t.unread); });
+      h = '<form id="ph-new" class="line"><input id="ph-to" maxlength="16" placeholder="✏️ Écrire à : @pseudo" autocomplete="off"><button>OK</button></form>';
+      const keys = Object.keys(chats()).filter((k) => k.startsWith("d:") && chats()[k].msgs.length).sort((a, b) => chats()[b].msgs[chats()[b].msgs.length - 1].ts - chats()[a].msgs[chats()[a].msgs.length - 1].ts);
+      h += "<h4>Mes conversations</h4>" + (keys.map((k) => { const t = chats()[k], l = t.msgs[t.msgs.length - 1], on = Object.values(Net.players).some((q) => q.name.toLowerCase() === (t.name || "").toLowerCase()); return row(k, on ? "🟢" : "⚪", "@" + t.name, l.text, t.unread); }).join("") || '<p class="hint">Aucune conversation. Choisis un joueur ci-dessous ou écris son @pseudo.</p>');
+      const ps = Object.values(Net.players); h += "<h4>Joueurs en ligne (" + ps.length + ")</h4>" + (ps.map((q) => row("new:" + q.name, "🧑", "@" + q.name, "Envoyer un message", 0)).join("") || '<p class="hint">Personne d\'autre en ligne pour le moment.</p>');
+      h += "<h4>Public</h4>" + row("monde", "🌍", "Chat public", "Message visible par tous les joueurs", th("monde").unread);
     } else if (app === "msg") {
       let title, msgs;
-      if (thread === "monde") { title = "🌍 Chat mondial"; msgs = world.map((m) => ({ me: m.id === Net.id, text: m.text, who: m.name })); }
-      else if (thread.startsWith("p:")) { const t = th(thread); title = "🧑 " + (t.name || (Net.players[thread.slice(2)] || {}).name || "Joueur"); msgs = t.msgs; }
-      else { const c = CONTACTS.find((q) => q.id === thread); title = c.emoji + " " + c.name; msgs = th(thread).msgs; }
+      if (thread === "monde") { title = "🌍 Chat public (tout le monde)"; msgs = world.map((m) => ({ me: m.id === Net.id, text: m.text, who: m.name })); }
+      else { const t = th(thread); title = "💬 @" + (t.name || "joueur"); msgs = t.msgs; }
       th(thread).unread = 0; badge();
       h = "<h4>" + esc(title) + "</h4>" + (thread === "monde" && Net.status !== "online" ? '<p class="hint">Serveur ' + (Net.status === "connecting" ? "en cours de connexion (le serveur gratuit peut mettre 1 minute à se réveiller)…" : "hors ligne. Voir Réglages > Serveur.") + (Net.url ? "<br>Adresse utilisée : " + esc(Net.url) : "<br>Aucune adresse de serveur n'est enregistrée.") + "</p>" : "") + '<div class="msgs" id="ph-msgs">' + msgs.map((m) => '<div class="m ' + (m.me ? "me" : "") + '">' + (m.who && !m.me ? "<small>" + esc(m.who) + "</small>" : "") + esc(m.text) + "</div>").join("") + '</div><form id="ph-form"><input id="ph-in" maxlength="140" placeholder="Écrire…" autocomplete="off"><button>➤</button></form>';
     } else if (app === "bank") {
@@ -79,18 +75,16 @@ const Phone = (function () {
     $("ph-back").addEventListener("click", () => { if (thread) thread = null; else app = "home"; draw(); });
     el.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return; Sound.play("click");
-      if (b.dataset.app) { app = b.dataset.app; thread = null; draw(); } else if (b.dataset.th) { thread = b.dataset.th; draw(); }
+      if (b.dataset.app) { app = b.dataset.app; thread = null; draw(); } else if (b.dataset.th) { thread = b.dataset.th; if (thread.startsWith("new:")) { const nm = thread.slice(4); thread = dkey(nm); th(thread).name = nm; } draw(); }
       else if (b.id === "s-namebtn") { const v = $("s-name").value.trim().slice(0, 16); if (v) { S().name = v; Net.connect(Net.url, v, { shirt: "#1e88e5", skin: "#a0673a" }); G.save(); G.toast("Pseudo : " + v); } }
       else if (b.id === "s-srvbtn") { const v = $("s-srv").value.trim(); try { localStorage.setItem("lvk-server", v); } catch (x) {} Net.connect(v, S().name, { shirt: "#1e88e5", skin: "#a0673a" }); setTimeout(draw, 800); }
     });
-    el.addEventListener("submit", (e) => { e.preventDefault(); const i = $("ph-in"); if (send(i.value) !== false) i.value = ""; });
+    el.addEventListener("submit", (e) => { e.preventDefault(); if (e.target.id === "ph-new") { const v = $("ph-to").value.trim().replace(/^@/, ""); if (!v) return; const who = Object.values(Net.players).find((q) => q.name.toLowerCase() === v.toLowerCase()); if (!who && !chats()[dkey(v)]) return G.toast("@" + v + " n'est pas en ligne"); thread = dkey(v); th(thread).name = who ? who.name : th(thread).name || v; draw(); return; } const i = $("ph-in"); if (send(i.value) !== false) i.value = ""; });
     el.addEventListener("change", (e) => { const id = e.target.id; if (id === "s-sfx") Sound.setSfx(e.target.checked); else if (id === "s-mus") Sound.setMusic(e.target.checked); else if (id === "s-vol") Sound.setVol(+e.target.value); else if (id === "s-lite") G.setLite(e.target.checked); });
     el.addEventListener("input", (e) => { if (e.target.id === "s-vol") Sound.setVol(+e.target.value); });
     badge();
   }
   function toggle(v) { open = v === undefined ? !open : v; el.hidden = !open; if (open) { app = "home"; thread = null; draw(); } }
-  function tick(dt) {
-    nextAuto -= dt; if (nextAuto <= 0) { nextAuto = 90 + Math.random() * 100; const c = CONTACTS[Math.floor(Math.random() * CONTACTS.length)], l = c.lines[Math.floor(Math.random() * c.lines.length)]; add(c.id, false, l); Sound.play("notify"); G.toast("💬 " + c.name + " : " + l.slice(0, 40)); }
-  }
+  function tick(dt) {}
   return { init, tick, toggle, get open() { return open; } };
 })();
