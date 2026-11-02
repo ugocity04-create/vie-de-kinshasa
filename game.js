@@ -472,6 +472,7 @@
     if (r) {
       if (r.cloud) { S = Object.assign({}, JSON.parse(JSON.stringify(START)), r.cloud, { started: true }); S.stats = Object.assign({}, START.stats, r.cloud.stats || {}); }
       else if (!(S.started && (!S.uid || S.uid === r.id))) { S = JSON.parse(JSON.stringify(START)); }
+      S.chats = S.chats || {}; Object.keys(S.chats).forEach((k) => { if (/^d:joueur\d+$/.test(k)) delete S.chats[k]; });
       S.uid = r.id; S.name = r.username; S.own = S.own || []; if (!S.zone) S.zone = "matete"; save();
     }
     begin();
