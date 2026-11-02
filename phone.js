@@ -78,9 +78,10 @@ const Phone = (function () {
     el = $("phone");
     el.innerHTML = '<button id="ph-x">✕ Fermer</button><div class="frame"><i class="isl"></i><div class="bar"><b id="ph-time"></b><span id="ph-net"></span></div><div id="ph-top"><button id="ph-back">‹</button><b id="ph-title"></b></div><div id="ph-body"></div><button id="ph-home" aria-label="Accueil"></button></div>';
     $("phone-btn").addEventListener("click", () => toggle());
-    $("ph-x").addEventListener("click", () => toggle(false)); $("ph-home").addEventListener("click", () => { app = "home"; thread = null; draw(); });
+    $("ph-x").addEventListener("click", () => toggle(false)); $("ph-home").addEventListener("click", () => { if (app === "home") { toggle(false); return; } app = "home"; thread = null; draw(); });
     $("ph-back").addEventListener("click", () => { if (thread) thread = null; else app = "home"; draw(); });
     el.addEventListener("click", (e) => {
+      if (e.target === el) { toggle(false); return; }
       const b = e.target.closest("button"); if (!b) return; Sound.play("click");
       if (b.dataset.buyv) { G.buyVeh(b.dataset.buyv); draw(); } else if (b.dataset.use !== undefined && b.hasAttribute("data-use")) { G.useVeh(b.dataset.use); draw(); } else if (b.dataset.house) { G.buyHouse(); draw(); } else if (b.dataset.go) { if (G.travel(b.dataset.go)) toggle(false); } else if (b.dataset.app) { app = b.dataset.app; thread = null; draw(); } else if (b.dataset.th) { thread = b.dataset.th; if (thread.startsWith("new:")) { const nm = thread.slice(4); thread = dkey(nm); th(thread).name = nm; } draw(); }
       else if (b.id === "s-namebtn") { const v = $("s-name").value.trim().slice(0, 16); if (v) { S().name = v; Net.connect(Net.url, v, { shirt: "#1e88e5", skin: "#a0673a" }); G.save(); G.toast("Pseudo : " + v); } }
