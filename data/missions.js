@@ -11,5 +11,6 @@ const MISSIONS = [
   { id: "m8",  text: "Travaille à l'usine de Limete",              reward: 5000,  check: (s) => s.stats.jobIds.includes("usine") },
   { id: "m9",  text: "Obtiens un travail de bureau à Gombe",       reward: 10000, check: (s) => s.stats.jobIds.includes("bureau") },
   { id: "m10", text: "Ouvre ton kiosque (carnet dans ta maison)",  reward: 10000, check: (s) => s.kiosk },
-  { id: "m11", text: "Achète une moto",                            reward: 20000, check: (s) => s.moto }
+  { id: "m11", text: "Achète une moto",                            reward: 20000, check: (s) => s.moto },
+  { id: "m12", text: "Deviens propriétaire de ta maison (6 000 000 FC)", reward: 200000, check: (s) => s.ownHome }
 ];
