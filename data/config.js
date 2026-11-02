@@ -5,3 +5,4 @@
 const SERVER_URL = "wss://vie-de-kinshasa-serveur.onrender.com";
 const SUPABASE_URL = "https://putpbtjbicylpiqbbunl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1dHBidGpiaWN5bHBpcWJidW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2NDg5OTcsImV4cCI6MjEwOTIyNDk5N30.wZzdae4ohtx1UEFRSrXAh6NXCshDrLstjYL44ebElhg";
+const AUTH_EMAIL = "akunashachibuike0@gmail.com";
