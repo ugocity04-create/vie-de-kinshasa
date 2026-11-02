@@ -443,5 +443,5 @@ const R3D = (function () {
       if (G.raining > 0) { oc.strokeStyle = "rgba(190,210,255,.55)"; oc.lineWidth = 1.2; oc.beginPath(); for (let i = 0; i < 130; i++) { const x = ((i * 97 + G.time * 220) % (W + 40)) - 20, y = (i * 61 + G.time * 700) % H; oc.moveTo(x, y); oc.lineTo(x - 4, y + 14); } oc.stroke(); }
     }
   }
-  return { refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(1.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
+  return { refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(2.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
 })();
