@@ -3,11 +3,12 @@ const Net = (function () {
   "use strict";
   const N = { players: {}, online: 0, status: "offline", id: null, url: "" };
   const ev = { chat: [], dm: [], status: [], you: [], fail: [] };
-  let ws = null, name = "", look = {}, retry = 0, posT = 0, timer = null;
+  let ws = null, name = "", look = {}, token = "", retry = 0, posT = 0, timer = null;
   N.on = (e, fn) => ev[e].push(fn);
   const fire = (e, a) => ev[e].forEach((f) => { try { f(a); } catch (x) {} });
   function setStatus(s) { N.status = s; fire("status", s); }
-  N.connect = function (url, nm, lk) {
+  N.connect = function (url, nm, lk, tk) {
+    if (tk !== undefined) token = tk;
     url = (url || "").trim().replace(/\/+$/, ""); if (url) { url = url.replace(/^https:\/\//i, "wss://").replace(/^http:\/\//i, "ws://"); if (!/^wss?:\/\//i.test(url)) url = "wss://" + url; }
     N.url = url; name = nm; look = lk || {}; if (timer) { clearTimeout(timer); timer = null; }
     if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
@@ -15,7 +16,7 @@ const Net = (function () {
     if (!N.url) { setStatus("offline"); return; }
     setStatus("connecting");
     try { ws = new WebSocket(N.url); } catch (e) { setStatus("offline"); return; }
-    ws.onopen = () => { retry = 0; setStatus("online"); N.send({ t: "hello", name, shirt: look.shirt, skin: look.skin }); };
+    ws.onopen = () => { retry = 0; setStatus("online"); N.send({ t: "hello", name, shirt: look.shirt, skin: look.skin, token }); };
     ws.onmessage = (m) => {
       let d; try { d = JSON.parse(m.data); } catch (e) { return; }
       if (d.t === "welcome") N.id = d.id;
