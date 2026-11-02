@@ -57,8 +57,15 @@ const Auth = (function () {
   };
   A.flush = async function (S) {
     S = S || A._S; if (!A.user || !sb || !S) return; const json = JSON.stringify(S); if (json === lastJson) return; lastJson = json;
-    try { await sb.from("saves").upsert({ id: A.user.id, data: S, updated_at: new Date().toISOString() }); } catch (e) { lastJson = ""; }
+    try { const r = await sb.from("saves").upsert({ id: A.user.id, data: S, updated_at: new Date().toISOString() }); if (r && r.error) { lastJson = ""; if (A.onRejected) A.onRejected(r.error.message || ""); } } catch (e) { lastJson = ""; }
   };
+  const me = () => (A.user ? A.user.username : "");
+  A.userExists = async (n) => { if (!sb) return false; try { const r = await sb.from("profiles").select("id").eq("username", String(n).toLowerCase()).maybeSingle(); return !!(r.data); } catch (e) { return false; } };
+  A.storeDM = async (to, text) => { if (!A.user || !sb) return false; try { const r = await sb.from("messages").insert({ from_user: me(), to_user: String(to).toLowerCase(), text: String(text).slice(0, 300) }); return !r.error; } catch (e) { return false; } };
+  A.loadDMs = async () => { if (!A.user || !sb) return []; try { const r = await sb.from("messages").select("*").or("from_user.eq." + me() + ",to_user.eq." + me()).order("created_at", { ascending: false }).limit(300); return r.data ? r.data.slice().reverse() : []; } catch (e) { return []; } };
+  A.markRead = async (from) => { if (!A.user || !sb) return; try { await sb.from("messages").update({ read: true }).eq("to_user", me()).eq("from_user", String(from).toLowerCase()).eq("read", false); } catch (e) {} };
+  A.report = async (who, reason, ctx) => { if (!A.user || !sb) return false; try { const r = await sb.from("reports").insert({ reporter: me(), reported: String(who).toLowerCase(), reason: String(reason || "").slice(0, 200), context: String(ctx || "").slice(0, 900) }); return !r.error; } catch (e) { return false; } };
+  A.changePassword = async (pw) => { if (!sb) return "Pas de compte"; try { const r = await sb.auth.updateUser({ password: pw }); return r.error ? r.error.message : ""; } catch (e) { return "Erreur"; } };
   A.logout = async function () { try { await A.flush(); await sb.auth.signOut(); } catch (e) {} try { localStorage.removeItem("lvk-save-v3"); } catch (e) {} location.reload(); };
   document.addEventListener("visibilitychange", () => { if (document.hidden) A.flush(); });
   window.addEventListener("pagehide", () => A.flush());
