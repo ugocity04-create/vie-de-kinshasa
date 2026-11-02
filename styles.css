@@ -91,3 +91,6 @@ button.taxi{background:#f5c518;color:#222;border:0;border-radius:10px;padding:8p
 .ic-map span { background: linear-gradient(145deg, #3ee0cf, #0a84ff); } .ic-set span { background: linear-gradient(145deg, #a1a1a8, #5c5c63); }
 #phone:not(.home) .prow, #phone:not(.home) .tx, #phone:not(.home) .card.big { background: #16294f; border: none; border-radius: 16px; }
 #phone:not(.home) .m { background: #22386a; } #phone:not(.home) .m.me { background: #0a84ff; }
+
+#ph-x { position: fixed !important; top: 10px !important; right: 12px !important; left: auto !important; z-index: 20 !important; }
+#phone .frame { margin-top: 44px; }
