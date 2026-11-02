@@ -2,7 +2,7 @@
 const Net = (function () {
   "use strict";
   const N = { players: {}, online: 0, status: "offline", id: null, url: "" };
-  const ev = { chat: [], dm: [], status: [] };
+  const ev = { chat: [], dm: [], status: [], you: [], fail: [] };
   let ws = null, name = "", look = {}, retry = 0, posT = 0, timer = null;
   N.on = (e, fn) => ev[e].push(fn);
   const fire = (e, a) => ev[e].forEach((f) => { try { f(a); } catch (x) {} });
@@ -26,6 +26,8 @@ const Net = (function () {
         Object.keys(N.players).forEach((id) => { if (!seen[id]) delete N.players[id]; });
       } else if (d.t === "chat") { const p = N.players[d.id]; if (p) { p.say = d.text.slice(0, 40); p.sayT = 5; } fire("chat", d); }
       else if (d.t === "dm") fire("dm", d);
+      else if (d.t === "you") fire("you", d.name);
+      else if (d.t === "dmfail") fire("fail", d.to);
     };
     ws.onclose = () => { setStatus("offline"); N.players = {}; retry = Math.min(retry + 1, 6); timer = setTimeout(() => N.connect(N.url, name, look), 3000 * retry); };
     ws.onerror = () => {};
