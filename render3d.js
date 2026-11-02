@@ -113,6 +113,8 @@ const R3D = (function () {
   function init(canvas, overlay) {
     cv = canvas; ov = overlay; oc = ov.getContext("2d");
     gl = cv.getContext("webgl", { antialias: true, alpha: false }) || cv.getContext("experimental-webgl");
+    cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); lost = true; });
+    cv.addEventListener("webglcontextrestored", () => { location.reload(); });
     if (!gl) throw new Error("WebGL indisponible");
     prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
@@ -134,7 +136,7 @@ const R3D = (function () {
   }
 
   // ---------- la ville (construite une seule fois) ----------
-  let builtZone = "";
+  let builtZone = "", lost = false;
   function buildStatic() {
     const B = SB; B.clear(); const CZ = G.curZone(); builtZone = CZ.id; const M = 130, IZ = (x, y, m) => G.inZone(x, y, m === undefined ? M : m);
     B.flat((CZ.x + CZ.w / 2) / U, 0.0, (CZ.y + CZ.h / 2) / U, (CZ.w + 2 * M) / U, (CZ.h + 2 * M) / U, 0x3b3e43);
@@ -147,7 +149,7 @@ const R3D = (function () {
       for (let i = 0; i < 6; i++) { const z = (a.y + 14 + i * 18) / U; B.flat((b.x - 8) / U, 0.04, z, 0.9, 0.5, 0xf0f0f0); B.flat((b.x + b.w + 8) / U, 0.04, z, 0.9, 0.5, 0xf0f0f0); }
     }));
     B.flat((CZ.x + CZ.w / 2) / U, -0.03, (CZ.y + CZ.h / 2) / U, 400, 400, 0x7d8a6a);
-    if (GLBM.has("com/building-a")) { const x0 = CZ.x - M - 40, y0 = CZ.y - M - 40, x1 = CZ.x + CZ.w + M + 40, y1 = CZ.y + CZ.h + M + 40; let k = 0;
+    if (GLBM.has("com/building-a") && !G.lite()) { const x0 = CZ.x - M - 40, y0 = CZ.y - M - 40, x1 = CZ.x + CZ.w + M + 40, y1 = CZ.y + CZ.h + M + 40; let k = 0;
       for (let row = 0; row < 2; row++) { const o = row * 120; for (let x = x0 - o; x <= x1 + o; x += 130) for (const yy of [y0 - o, y1 + o]) { k++; const key = k % 5 === 0 ? "sub/building-type-" + "abcdefghijklmnopqrstu"[k % 21] : "com/" + (k % 3 === 0 ? "building-skyscraper-" + "abcde"[k % 5] : "low-detail-building-" + LET[k % 14]); placeModel(B, key, x / U, yy / U, 5.5, 5.5, yy < CZ.y ? 0 : Math.PI, k % 3 === 0 ? 0.9 : 1.0, 0.0); }
         for (let y = y0 - o + 130; y < y1 + o; y += 130) for (const xx of [x0 - o, x1 + o]) { k++; const key = "com/low-detail-building-" + LET[k % 14]; placeModel(B, key, xx / U, y / U, 5.5, 5.5, xx < CZ.x ? Math.PI / 2 : -Math.PI / 2, 1.0, 0.0); } } }
     ZONES.filter((z) => z.id === CZ.id).forEach((z) => {
@@ -410,6 +412,7 @@ const R3D = (function () {
 
   // ---------- image complète ----------
   function render(dt) {
+    if (lost) return;
     if (!built || builtZone !== G.curZone().id) buildStatic();
     pi = 0; DB.clear(); TB.clear();
     const dk = G.darkness(), t = G.time, indoors = !!G.scene;
