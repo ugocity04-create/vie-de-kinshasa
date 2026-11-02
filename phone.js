@@ -30,7 +30,7 @@ const Phone = (function () {
     $("ph-net").textContent = Net.status === "online" ? "🟢 " + Net.online + " en ligne" : Net.status === "connecting" ? "🟡 connexion…" : "⚪ hors ligne";
     $("ph-back").style.visibility = app === "home" ? "hidden" : "visible";
     if (app === "home") {
-      const apps = [["msg", "💬", "Messages"], ["bank", "🏦", "Banque"], ["obj", "🎯", "Objectifs"], ["map", "🗺️", "Carte"], ["set", "⚙️", "Réglages"]];
+      const apps = [["msg", "💬", "Messages"], ["jobs", "💼", "Emplois"], ["cars", "🚗", "Véhicules"], ["house", "🏠", "Maison"], ["bank", "🏦", "Banque"], ["obj", "🎯", "Objectifs"], ["map", "🗺️", "Carte"], ["set", "⚙️", "Réglages"]];
       h = '<div class="apps">' + apps.map((a) => '<button data-app="' + a[0] + '"><span>' + a[1] + (a[0] === "msg" && unreadTotal() ? '<i class="dot">' + unreadTotal() + "</i>" : "") + "</span>" + a[2] + "</button>").join("") + "</div>";
     } else if (app === "msg" && !thread) {
       const row = (id, em, nm, last, un) => '<button class="prow" data-th="' + id + '"><b>' + em + "</b><div><strong>" + esc(nm) + "</strong><small>" + esc(last || "") + "</small></div>" + (un ? '<i class="dot">' + un + "</i>" : "") + "</button>";
@@ -49,6 +49,13 @@ const Phone = (function () {
       h = '<div class="card big">' + G.fmt(s.money) + "</div><h4>Dernières opérations</h4>" + ((s.tx || []).slice().reverse().slice(0, 14).map((t) => '<div class="tx"><span>' + esc(t.label) + '</span><b class="' + (t.amt < 0 ? "neg" : "pos") + '">' + (t.amt > 0 ? "+" : "") + G.fmt(t.amt) + "</b></div>").join("") || '<p class="hint">Rien pour le moment.</p>');
     } else if (app === "obj") {
       h = MISSIONS.map((m) => { const d = s.missions.includes(m.id); return '<div class="tx ' + (d ? "done" : "") + '"><span>' + (d ? "✅ " : "⬜ ") + esc(m.text) + "</span><b>+" + G.fmt(m.reward) + "</b></div>"; }).join("");
+    } else if (app === "jobs") {
+      h = '<p class="hint">Tous les emplois de Kinshasa, du moins payé au mieux payé. Touche pour y aller en taxi.</p>' + G.jobBoard().map((r) => { const here = r.z.id === s.zone, t = here ? null : G.taxiList().find((q) => q.z.id === r.z.id);
+        return '<div class="tx jobrow ' + (r.locked ? "done" : "") + '"><span><b>' + esc(r.j.name) + "</b><br><small>" + r.b.emoji + " " + esc(r.b.name) + " · " + esc(r.z.name) + (r.b.open ? " · " + r.b.open[0] + "h-" + r.b.open[1] + "h" : "") + "<br>" + G.fmt(r.j.pay) + " · " + r.j.hours + "h · " + (r.locked ? "🔒 réputation " + r.j.rep : "⚡ -" + r.j.energy) + '</small></span>' + (here ? "<em>📍 ici</em>" : '<button class="taxi" data-go="' + r.z.id + '">🚕 ' + G.fmt(t ? t.fare : 0) + "</button>") + "</div>"; }).join("");
+    } else if (app === "cars") {
+      h = '<div class="card big">' + G.fmt(s.money) + "</div>" + G.VEHS.map((v) => { const own = s.own.includes(v.id); return '<div class="tx"><span><b>' + v.emoji + " " + v.name + "</b><br><small>" + v.desc + "</small></span>" + (own ? (s.veh === v.id ? "<em>✅ utilisé</em>" : '<button class="taxi" data-use="' + v.id + '">Utiliser</button>') : '<button class="taxi" data-buyv="' + v.id + '">' + G.fmt(v.price) + "</button>") + "</div>"; }).join("") + (s.veh ? '<div class="tx"><span>🚶 Marcher à pied</span><button class="taxi" data-use="">Utiliser</button></div>' : "");
+    } else if (app === "house") {
+      h = '<div class="card big">' + (s.ownHome ? "🏠 Propriétaire" : "🏠 Locataire") + "</div>" + (s.ownHome ? '<p class="hint">Ta maison est à toi, tu ne paies plus de loyer. Félicitations !</p>' : '<div class="tx"><span><b>Loyer</b><br><small>14 000 FC tous les 7 jours · prochain : jour ' + s.nextRent + '</small></span></div><div class="tx"><span><b>Acheter ta maison</b><br><small>Plus de loyer, pour toujours.</small></span><button class="taxi" data-house="1">' + G.fmt(G.HOUSE_PRICE) + "</button></div>");
     } else if (app === "map") h = '<canvas id="ph-map" width="340" height="400"></canvas><p class="hint">🟡 toi · 🔵 autres joueurs</p><h4>🚕 Taxi (ou marche à pied)</h4>' + G.taxiList().map((t) => '<div class="tx"><span>' + esc(t.z.name) + '<br><small>🚶 ' + (t.walk > 60 ? Math.round(t.walk / 60) + " min" : t.walk + " s") + '</small></span><button class="taxi" data-z="' + t.z.id + '">' + (t.d < 300 ? "ici" : G.fmt(t.fare)) + '</button></div>').join("");
     else if (app === "set") {
       const st = Sound.set;
@@ -75,7 +82,7 @@ const Phone = (function () {
     $("ph-back").addEventListener("click", () => { if (thread) thread = null; else app = "home"; draw(); });
     el.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return; Sound.play("click");
-      if (b.dataset.app) { app = b.dataset.app; thread = null; draw(); } else if (b.dataset.th) { thread = b.dataset.th; if (thread.startsWith("new:")) { const nm = thread.slice(4); thread = dkey(nm); th(thread).name = nm; } draw(); }
+      if (b.dataset.buyv) { G.buyVeh(b.dataset.buyv); draw(); } else if (b.dataset.use !== undefined && b.hasAttribute("data-use")) { G.useVeh(b.dataset.use); draw(); } else if (b.dataset.house) { G.buyHouse(); draw(); } else if (b.dataset.go) { if (G.travel(b.dataset.go)) toggle(false); } else if (b.dataset.app) { app = b.dataset.app; thread = null; draw(); } else if (b.dataset.th) { thread = b.dataset.th; if (thread.startsWith("new:")) { const nm = thread.slice(4); thread = dkey(nm); th(thread).name = nm; } draw(); }
       else if (b.id === "s-namebtn") { const v = $("s-name").value.trim().slice(0, 16); if (v) { S().name = v; Net.connect(Net.url, v, { shirt: "#1e88e5", skin: "#a0673a" }); G.save(); G.toast("Pseudo : " + v); } }
       else if (b.id === "s-srvbtn") { const v = $("s-srv").value.trim(); try { localStorage.setItem("lvk-server", v); } catch (x) {} Net.connect(v, S().name, { shirt: "#1e88e5", skin: "#a0673a" }); setTimeout(draw, 800); }
     });
