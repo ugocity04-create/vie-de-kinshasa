@@ -10,7 +10,7 @@
   };
   const KEY = "lvk-save-v3";
   const START = { day: 1, money: 5000, energy: 100, food: 70, health: 100, rep: 0, started: false,
-                  x: 165, y: 925, face: 1, kiosk: false, moto: false, won: false,
+                  x: 165, y: 925, face: 1, kiosk: false, moto: false, won: false, own: [], veh: "", ownHome: false,
                   name: "", hd: 0, chats: {}, tx: [], date: "", nextRent: 8, lastDaily: "", streak: 0, fridgeAt: 0, missions: [],
                   stats: { jobs: 0, meals: 0, houses: 0, earned: 0, zones: [], jobIds: [] } };
   const $ = (id) => document.getElementById(id);
@@ -28,7 +28,7 @@
   }
   function todayKey(offset) { return new Date(Date.now() + CFG.TZ * 3600e3 + (offset || 0) * 864e5).toISOString().slice(0, 10); }
 
-  let S = load(); if (!S.zone) { const zz = ZONES.find((q) => S.x >= q.x && S.x <= q.x + q.w && S.y >= q.y && S.y <= q.y + q.h); S.zone = zz ? zz.id : "matete"; }
+  let S = load(); S.own = S.own || []; if (S.moto && !S.own.includes("moto")) S.own.push("moto"); if (!S.veh && S.moto) S.veh = "moto"; if (!S.zone) { const zz = ZONES.find((q) => S.x >= q.x && S.x <= q.x + q.w && S.y >= q.y && S.y <= q.y + q.h); S.zone = zz ? zz.id : "matete"; }
   function load() {
     try {
       const r = localStorage.getItem(KEY);
@@ -141,7 +141,7 @@
   function newDay() {
     S.day++; toast(T.newDay + S.day);
     if (S.kiosk) { money(KIOSK_INCOME, "Kiosque"); toast(T.kioskIncome + fmt(KIOSK_INCOME)); }
-    if (S.day >= S.nextRent) {
+    if (S.day >= S.nextRent && !S.ownHome) {
       S.nextRent += RENT_EVERY;
       if (S.money >= RENT) { money(-RENT, "Loyer"); toast(T.rentPaid + fmt(RENT)); } else { S.health -= 20; toast(T.rentFail); }
     }
@@ -305,7 +305,7 @@
     const yw = R3D.getYaw(), cy = Math.cos(yw), sy = Math.sin(yw); if (!scene) { const rx = mx * cy + my * sy, ry = -mx * sy + my * cy; mx = rx; my = ry; }
     const m = Math.hypot(mx, my); pl.moving = false;
     if (!busy && m > 0.1) {
-      const sp = (scene ? 110 : S.moto ? CFG.MOTO : CFG.WALK) * (S.energy < 15 ? 0.7 : 1) * dt / Math.max(1, m);
+      const sp = (scene ? 110 : vehSpeed()) * (S.energy < 15 ? 0.7 : 1) * dt / Math.max(1, m);
       if (scene) {
         const nx = ip.x + mx * sp, ny = ip.y + my * sp;
         if (!blockedIn(nx, ip.y)) ip.x = nx; if (!blockedIn(ip.x, ny)) ip.y = ny; S.hd = Math.atan2(mx, my); if (Math.abs(mx) > 0.1) ip.face = mx > 0 ? 1 : -1;
@@ -389,9 +389,14 @@
   $("act").addEventListener("click", onAct);
   ["pointerdown", "keydown"].forEach((e) => window.addEventListener(e, () => Sound.init(), { once: false, passive: true }));
   let drag = null; const gc = $("game");
-  gc.addEventListener("pointerdown", (e) => { drag = { x: e.clientX }; });
-  window.addEventListener("pointermove", (e) => { if (drag && e.target === gc) { R3D.addYaw(-(e.clientX - drag.x) * 0.008); drag.x = e.clientX; } });
-  window.addEventListener("pointerup", () => { drag = null; });
+  const ptr = new Map(); let pinch0 = 0, zoom0 = 1;
+  gc.addEventListener("pointerdown", (e) => { ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); drag = { x: e.clientX }; if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; zoom0 = R3D.getZoom(); } });
+  window.addEventListener("pointermove", (e) => {
+    if (!ptr.has(e.pointerId)) return; const o = ptr.get(e.pointerId);
+    if (ptr.size >= 2) { ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); const [a, b] = [...ptr.values()]; R3D.setZoom(zoom0 * pinch0 / (Math.hypot(a.x - b.x, a.y - b.y) || 1)); return; }
+    if (drag && e.target === gc) { R3D.addYaw(-(e.clientX - drag.x) * 0.008); drag.x = e.clientX; } ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  });
+  ["pointerup", "pointercancel"].forEach((n) => window.addEventListener(n, (e) => { ptr.delete(e.pointerId); if (!ptr.size) drag = null; }));
   gc.addEventListener("wheel", (e) => { R3D.setZoom(R3D.getZoom() + e.deltaY * 0.001); }, { passive: true });
   $("snd").addEventListener("click", () => { const on = !(Sound.set.sfx || Sound.set.music); Sound.setSfx(on); Sound.setMusic(on); $("snd").textContent = on ? "🔊" : "🔇"; });
   $("m-close").addEventListener("click", closeModal);
@@ -411,7 +416,7 @@
   // TAXI : voyager vers un quartier contre de l'argent (ou marcher, plus long)
   const ZSOON = ["aeroport", "brazza"];
   function zoneCenter(z) { return { x: z.x + z.w / 2, y: z.y + z.h / 2 }; }
-  function taxiInfo(z) { const c = zoneCenter(z), d = Math.hypot(c.x - S.x, c.y - S.y); return { d, fare: Math.max(1500, Math.round(d / 100) * 500), walk: Math.round(d / CFG.WALK) }; }
+  function taxiInfo(z) { const c = zoneCenter(z), d = Math.hypot(c.x - S.x, c.y - S.y); return { d, fare: Math.round(Math.max(1500, Math.round(d / 100) * 500) * (S.veh === "voiture" ? 0.25 : S.veh === "moto" ? 0.5 : 1) / 100) * 100, walk: Math.round(d / CFG.WALK) }; }
   function taxiList() { return ZONES.filter((z) => !ZSOON.includes(z.id)).map((z) => Object.assign({ z }, taxiInfo(z))); }
   function travel(id) {
     if (scene || ff) { toast("Sors d'abord du bâtiment."); return false; }
@@ -428,9 +433,35 @@
     }, 1800);
     return true;
   }
-  window.G = { inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
+  // VÉHICULES, MAISON, EMPLOIS (apps du téléphone)
+  const VEHS = [
+    { id: "velo", name: "Vélo", emoji: "🚲", price: 25000, speed: 200, desc: "Plus rapide qu'à pied." },
+    { id: "moto", name: "Moto", emoji: "🏍️", price: 400000, speed: 300, desc: "Rapide. Taxi à moitié prix." },
+    { id: "voiture", name: "Voiture", emoji: "🚗", price: 3000000, speed: 450, desc: "Très rapide. Taxi à 25 %." }
+  ];
+  const HOUSE_PRICE = 6000000;
+  function vehSpeed() { const v = VEHS.find((q) => q.id === S.veh); return v && S.own.includes(v.id) ? v.speed : CFG.WALK; }
+  function buyVeh(id) {
+    const v = VEHS.find((q) => q.id === id); if (!v || S.own.includes(id)) return false;
+    if (S.money < v.price) { toast("Il te manque " + fmt(v.price - S.money)); return false; }
+    money(-v.price, v.name); S.own.push(id); S.veh = id; S.moto = S.own.includes("moto") || S.own.includes("voiture"); toast("🎉 " + v.name + " achetée !"); Sound.play("coin");
+    if (S.kiosk && S.moto && !S.won) { S.won = true; toast(T.win); } save(); return true;
+  }
+  function useVeh(id) { if (id === "" || S.own.includes(id)) { S.veh = id; save(); return true; } return false; }
+  function buyHouse() {
+    if (S.ownHome) return false; if (S.money < HOUSE_PRICE) { toast("Il te manque " + fmt(HOUSE_PRICE - S.money)); return false; }
+    money(-HOUSE_PRICE, "Achat de la maison"); S.ownHome = true; toast("🏠 Tu es propriétaire ! Plus de loyer."); Sound.play("coin"); save(); return true;
+  }
+  function jobBoard() {
+    const out = [];
+    BUILDINGS.forEach((b) => { if (!b.jobs) return; const z = ZONES.find((q) => b.x + b.w / 2 >= q.x && b.x + b.w / 2 <= q.x + q.w && b.y + b.h / 2 >= q.y && b.y + b.h / 2 <= q.y + q.h);
+      b.jobs.forEach((id) => { const j = JOBS.find((q) => q.id === id); if (j && z) out.push({ j, b, z, locked: S.rep < j.rep }); }); });
+    return out.sort((a, b) => a.j.pay - b.j.pay);
+  }
+  window.G = { VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
     cars, npcs, boats, trees, lamps, darkness, nowH, fmt, hh, toast, save, lite: () => lite, setLite(b) { lite = b; try { localStorage.setItem("lvk-lite", b ? "1" : "0"); } catch (e) {} resize(); } };
   window.__lvk = { get S() { return S; }, BUILDINGS, enter, leave, onAct, setHour(h) { fakeHour = h; }, get scene() { return scene; }, get ff() { return ff; }, get ip() { return ip; }, doItem, get room() { return room; } };
+  R3D.setZoom(1.45);
   GLBM.loadAll("models").then(() => R3D.refresh());
   Phone.init(); checkDate(); hud(); if (S.started) netStart();
   if (!S.started) openStart(); else { toast(T.moveHint); dailyReward(); }
