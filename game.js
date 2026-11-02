@@ -36,7 +36,7 @@
     } catch (e) {}
     return JSON.parse(JSON.stringify(START));
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} Auth.queueSave(S); }
 
   // ====== MONDE ======
   const jobById = Object.fromEntries(JOBS.map((j) => [j.id, j]));
@@ -251,7 +251,7 @@
   }
   function openStart() {
     openModal(T.title, T.chooseStart, (box) => {
-      const inp = document.createElement("input"); inp.id = "name-in"; inp.maxLength = 16; inp.placeholder = "Ton pseudo"; inp.value = S.name || "Joueur" + Math.floor(100 + Math.random() * 900); inp.className = "namein"; box.appendChild(inp);
+      const inp = document.createElement("input"); inp.id = "name-in"; inp.maxLength = 16; inp.placeholder = "Ton pseudo"; inp.value = S.name || "Joueur" + Math.floor(100 + Math.random() * 900); if (Auth.user) { inp.value = Auth.user.username; inp.readOnly = true; } inp.className = "namein"; box.appendChild(inp);
       PROFILES.forEach((pr) => addBtn(box, pr.name, pr.desc, () => {
         S.name = (inp.value || "Joueur").trim().slice(0, 16); netStart(); S.started = true; S.money = pr.money; S.rep = pr.rep; S.date = todayKey(); modalLocked = false; closeModal();
         toast(T.startMsg.replace("5 000 FC", fmt(pr.money))); toast(T.moveHint); save(); dailyReward();
@@ -412,7 +412,7 @@
     if (S.started) { Net.sendPos(dt, scene ? ip.x : S.x, scene ? ip.y : S.y, scene ? scene.id : null, S.hd || 0, pl.moving); Sound.tick(dt, { walking: pl.moving, moto: S.moto, scene: !!scene, raining: raining > 0, night: darkness() > 0.5 }); }
     R3D.render(dt); requestAnimationFrame(frame);
   }
-  function netStart() { let url = SERVER_URL; try { url = localStorage.getItem("lvk-server") || url; } catch (e) {} Net.connect(url, S.name, { shirt: "#1e88e5", skin: "#a0673a" }); }
+  function netStart() { let url = SERVER_URL; try { url = localStorage.getItem("lvk-server") || url; } catch (e) {} Net.connect(url, S.name, { shirt: "#1e88e5", skin: "#a0673a" }, Auth.token()); }
   // TAXI : voyager vers un quartier contre de l'argent (ou marcher, plus long)
   const ZSOON = ["aeroport", "brazza"];
   function zoneCenter(z) { return { x: z.x + z.w / 2, y: z.y + z.h / 2 }; }
@@ -464,8 +464,17 @@
   R3D.setZoom(1.45);
   { const lb = document.createElement("div"); lb.style.cssText = "position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;font:600 12px system-ui;padding:6px 12px;border-radius:99px;z-index:4;pointer-events:none"; document.body.appendChild(lb);
     GLBM.loadAll("models", (d, n) => { lb.textContent = "🏙️ Chargement des bâtiments… " + d + "/" + n; if (d === Math.round(n / 2)) R3D.refresh(); }).then(() => { R3D.refresh(); lb.remove(); }); }
-  Phone.init(); checkDate(); hud(); if (S.started) netStart();
-  if (!S.started) openStart(); else { toast(T.moveHint); dailyReward(); }
+  function begin() {
+    Phone.init(); checkDate(); hud(); if (S.started) netStart();
+    if (!S.started) openStart(); else { toast(T.moveHint); dailyReward(); }
+  }
+  Auth.ready().then((r) => {
+    if (r) {
+      if (r.cloud) { S = Object.assign({}, JSON.parse(JSON.stringify(START)), r.cloud, { started: true }); S.stats = Object.assign({}, START.stats, r.cloud.stats || {}); }
+      else if (!(S.started && (!S.uid || S.uid === r.id))) { S = JSON.parse(JSON.stringify(START)); }
+      S.uid = r.id; S.name = r.username; S.own = S.own || []; if (!S.zone) S.zone = "matete"; save();
+    }
+    begin();
+  });
   requestAnimationFrame(frame);
 })();
- 
