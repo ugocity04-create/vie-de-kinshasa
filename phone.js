@@ -28,10 +28,10 @@ const Phone = (function () {
     const body = $("ph-body"), s = S(); let h = "";
     $("ph-time").textContent = G.hh(G.nowH());
     $("ph-net").textContent = Net.status === "online" ? "🟢 " + Net.online + " en ligne" : Net.status === "connecting" ? "🟡 connexion…" : "⚪ hors ligne";
-    $("ph-back").style.visibility = app === "home" ? "hidden" : "visible";
+    $("ph-back").style.visibility = app === "home" ? "hidden" : "visible"; el.classList.toggle("home", app === "home"); $("ph-top").style.display = app === "home" ? "none" : "flex"; $("ph-title").textContent = ({ msg: thread ? "" : "Messages", jobs: "Emplois", cars: "Véhicules", house: "Maison", bank: "Banque", obj: "Objectifs", map: "Carte", set: "Réglages" })[app] || "";
     if (app === "home") {
       const apps = [["msg", "💬", "Messages"], ["jobs", "💼", "Emplois"], ["cars", "🚗", "Véhicules"], ["house", "🏠", "Maison"], ["bank", "🏦", "Banque"], ["obj", "🎯", "Objectifs"], ["map", "🗺️", "Carte"], ["set", "⚙️", "Réglages"]];
-      h = '<div class="apps">' + apps.map((a) => '<button data-app="' + a[0] + '"><span>' + a[1] + (a[0] === "msg" && unreadTotal() ? '<i class="dot">' + unreadTotal() + "</i>" : "") + "</span>" + a[2] + "</button>").join("") + "</div>";
+      h = '<div class="hclock"><b>' + G.hh(G.nowH()) + "</b><small>" + new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Africa/Kinshasa" }) + " · Kinshasa</small></div>" + '<div class="apps">' + apps.map((a) => '<button data-app="' + a[0] + '" class="ic-' + a[0] + '"><span>' + a[1] + (a[0] === "msg" && unreadTotal() ? '<i class="dot">' + unreadTotal() + "</i>" : "") + "</span>" + a[2] + "</button>").join("") + "</div>";
     } else if (app === "msg" && !thread) {
       const row = (id, em, nm, last, un) => '<button class="prow" data-th="' + id + '"><b>' + em + "</b><div><strong>" + esc(nm) + "</strong><small>" + esc(last || "") + "</small></div>" + (un ? '<i class="dot">' + un + "</i>" : "") + "</button>";
       h = '<form id="ph-new" class="line"><input id="ph-to" maxlength="16" placeholder="✏️ Écrire à : @pseudo" autocomplete="off"><button>OK</button></form>';
@@ -76,9 +76,9 @@ const Phone = (function () {
   }
   function init() {
     el = $("phone");
-    el.innerHTML = '<div class="frame"><div class="bar"><button id="ph-back">‹</button><b id="ph-time"></b><span id="ph-net"></span><button id="ph-x">✕</button></div><div id="ph-body"></div></div>';
+    el.innerHTML = '<button id="ph-x">✕ Fermer</button><div class="frame"><i class="isl"></i><div class="bar"><b id="ph-time"></b><span id="ph-net"></span></div><div id="ph-top"><button id="ph-back">‹</button><b id="ph-title"></b></div><div id="ph-body"></div><button id="ph-home" aria-label="Accueil"></button></div>';
     $("phone-btn").addEventListener("click", () => toggle());
-    $("ph-x").addEventListener("click", () => toggle(false));
+    $("ph-x").addEventListener("click", () => toggle(false)); $("ph-home").addEventListener("click", () => { app = "home"; thread = null; draw(); });
     $("ph-back").addEventListener("click", () => { if (thread) thread = null; else app = "home"; draw(); });
     el.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return; Sound.play("click");
