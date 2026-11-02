@@ -476,6 +476,7 @@
       S.uid = r.id; S.name = r.username; S.own = S.own || []; if (!S.zone) S.zone = "matete"; save();
     }
     begin();
+    if (r) { Auth.onRejected = () => toast("⚠️ Sauvegarde refusée (gain d'argent suspect). Ta progression en ligne reste à la dernière version valide."); Auth.loadDMs().then((rows) => Phone.importDMs(rows)); }
   });
   requestAnimationFrame(frame);
 })();
