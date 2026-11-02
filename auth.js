@@ -2,13 +2,15 @@
 const Auth = (function () {
   "use strict";
   const A = { user: null, enabled: false };
-  const DOMAIN = "@vie-kinshasa.game";
+  // Supabase refuse les faux domaines. On utilise une vraie adresse avec "+pseudo" (Gmail ignore le "+...") : aucun e-mail n'est envoyé.
+  const BASE = typeof AUTH_EMAIL === "string" && /^[^@+\s]+@[^@\s]+$/.test(AUTH_EMAIL) ? AUTH_EMAIL : "";
+  const emailOf = (u) => BASE ? BASE.split("@")[0] + "+" + u + "@" + BASE.split("@")[1] : u + "@vie-kinshasa.game";
   let sb = null, tok = "", saveT = null, lastJson = "", ui = null;
   const ok = () => typeof SUPABASE_URL === "string" && SUPABASE_URL && SUPABASE_KEY;
   A.enabled = ok();
   A.token = () => tok;
   function client() { if (!sb) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } }); sb.auth.onAuthStateChange((e, s) => { tok = s ? s.access_token : ""; }); return sb; }
-  const userName = (u) => String(u.email || "").split("@")[0];
+  const userName = (u) => { const e = String(u.email || ""), m = /\+([a-z0-9_]{3,16})@/.exec(e); return m ? m[1] : e.split("@")[0]; };
   async function finish(session) {
     tok = session.access_token; A.user = { id: session.user.id, username: userName(session.user) };
     let cloud = null; try { const r = await sb.from("saves").select("data").eq("id", A.user.id).maybeSingle(); if (r.data) cloud = r.data.data; } catch (e) {}
@@ -32,10 +34,10 @@ const Auth = (function () {
         let session;
         if (mode === "up") {
           const ex = await sb.from("profiles").select("id").eq("username", u).maybeSingle(); if (ex.data) throw new Error("Ce pseudo est déjà pris.");
-          const r = await sb.auth.signUp({ email: u + DOMAIN, password: p }); if (r.error) throw r.error;
+          const r = await sb.auth.signUp({ email: emailOf(u), password: p }); if (r.error) throw r.error;
           if (!r.data.session) throw new Error("Compte créé, mais la confirmation e-mail est activée dans Supabase. Désactive-la (voir le guide).");
           session = r.data.session; const ins = await sb.from("profiles").insert({ id: session.user.id, username: u }); if (ins.error) throw new Error("Ce pseudo est déjà pris.");
-        } else { const r = await sb.auth.signInWithPassword({ email: u + DOMAIN, password: p }); if (r.error) throw new Error("Pseudo ou mot de passe incorrect."); session = r.data.session; }
+        } else { const r = await sb.auth.signInWithPassword({ email: emailOf(u), password: p }); if (r.error) throw new Error("Pseudo ou mot de passe incorrect."); session = r.data.session; }
         d.remove(); resolve(await finish(session));
       } catch (e) { err(String(e.message || e).replace("Invalid login credentials", "Pseudo ou mot de passe incorrect.")); $("au-go").disabled = false; $("au-go").textContent = mode === "in" ? "Se connecter" : "Créer mon compte"; }
     }
