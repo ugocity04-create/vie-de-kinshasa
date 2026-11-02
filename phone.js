@@ -2,25 +2,35 @@
 const Phone = (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
-  let open = false, app = "home", thread = null, world = [], el;
+  let open = false, app = "home", thread = null, world = [], el, tmenu = false;
   const S = () => G.S;
   const chats = () => (S().chats = S().chats || {});
   const th = (id) => (chats()[id] = chats()[id] || { msgs: [], unread: 0 });
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   function unreadTotal() { return Object.keys(chats()).reduce((a, k) => a + (k === "monde" || k.startsWith("d:") ? chats()[k].unread || 0 : 0), 0); }
+  const blocked = () => (S().blocked = S().blocked || []);
+  const isBlocked = (n) => blocked().includes(String(n).toLowerCase());
   const dkey = (name) => "d:" + String(name).replace(/^@/, "").toLowerCase();
   function badge() { const n = unreadTotal(), b = $("phone-badge"); b.textContent = n; b.hidden = !n; }
   function add(id, me, text) { const t = th(id); t.msgs.push({ me, text, ts: Date.now() }); t.msgs = t.msgs.slice(-40); if (!me && !(open && thread === id)) t.unread = (t.unread || 0) + 1; badge(); if (open) draw(); }
   function send(text) {
     text = text.trim(); if (!text || !thread) return false;
-    if (Net.status !== "online") { G.toast(Net.status === "connecting" ? "Connexion au serveur… patiente (jusqu'à 1 minute)" : "Serveur hors ligne : message non envoyé"); return false; }
-    if (thread === "monde") { Net.chat(text); return true; }
-    const t = th(thread), who = Object.values(Net.players).find((q) => q.name.toLowerCase() === (t.name || "").toLowerCase());
-    if (!who) { G.toast((t.name || "Ce joueur") + " n'est pas en ligne : message non envoyé"); return false; }
+    text = Filter.clean(text);
+    if (thread === "monde") { if (Net.status !== "online") { G.toast(Net.status === "connecting" ? "Connexion au serveur… patiente (jusqu'à 1 minute)" : "Serveur hors ligne : message non envoyé"); return false; } Net.chat(text); return true; }
+    const t = th(thread), toName = t.name || "", who = Object.values(Net.players).find((q) => q.name.toLowerCase() === toName.toLowerCase());
+    if (isBlocked(toName)) { G.toast("Tu as bloqué @" + toName + ". Débloque-le d'abord."); return false; }
+    if (Auth.user) {
+      add(thread, true, text); const mine = t.msgs[t.msgs.length - 1];
+      if (who && Net.status === "online") Net.dm(who.name, text);
+      Auth.storeDM(toName, text).then((ok) => { if (!ok) { const i = t.msgs.indexOf(mine); if (i >= 0) t.msgs.splice(i, 1); G.toast("@" + toName + " : message non envoyé (pseudo introuvable ?)"); if (open) draw(); } });
+      return true;
+    }
+    if (Net.status !== "online") { G.toast("Serveur hors ligne : message non envoyé"); return false; }
+    if (!who) { G.toast("@" + toName + " n'est pas en ligne : message non envoyé"); return false; }
     add(thread, true, text); Net.dm(who.name, text); return true;
   }
-  Net.on("chat", (d) => { world.push(d); world = world.slice(-60); if (open && thread === "monde") draw(); else if (d.id !== Net.id) { th("monde").unread = (th("monde").unread || 0) + 1; badge(); } });
-  Net.on("dm", (d) => { const k = dkey(d.name); th(k).name = d.name; add(k, false, d.text); Sound.play("msg"); G.toast("💬 " + d.name + " : " + d.text.slice(0, 40)); });
+  Net.on("chat", (d) => { if (isBlocked(d.name)) return; d.text = Filter.clean(d.text); world.push(d); world = world.slice(-60); if (open && thread === "monde") draw(); else if (d.id !== Net.id) { th("monde").unread = (th("monde").unread || 0) + 1; badge(); } });
+  Net.on("dm", (d) => { if (isBlocked(d.name)) return; d.text = Filter.clean(d.text); const k = dkey(d.name); th(k).name = d.name; add(k, false, d.text); Sound.play("msg"); G.toast("💬 " + d.name + " : " + d.text.slice(0, 40)); });
   Net.on("you", (nm) => { if (nm && S().name !== nm) { S().name = nm; G.save(); } });
   Net.on("fail", (to) => G.toast("@" + to + " n'est pas en ligne"));
   Net.on("status", () => { if (open) draw(); });
@@ -43,8 +53,8 @@ const Phone = (function () {
       let title, msgs;
       if (thread === "monde") { title = "🌍 Chat public (tout le monde)"; msgs = world.map((m) => ({ me: m.id === Net.id, text: m.text, who: m.name })); }
       else { const t = th(thread); title = "💬 @" + (t.name || "joueur"); msgs = t.msgs; }
-      th(thread).unread = 0; badge();
-      h = "<h4>" + esc(title) + "</h4>" + (thread === "monde" && Net.status !== "online" ? '<p class="hint">Serveur ' + (Net.status === "connecting" ? "en cours de connexion (le serveur gratuit peut mettre 1 minute à se réveiller)…" : "hors ligne. Voir Réglages > Serveur.") + (Net.url ? "<br>Adresse utilisée : " + esc(Net.url) : "<br>Aucune adresse de serveur n'est enregistrée.") + "</p>" : "") + '<div class="msgs" id="ph-msgs">' + msgs.map((m) => '<div class="m ' + (m.me ? "me" : "") + '">' + (m.who && !m.me ? "<small>" + esc(m.who) + "</small>" : "") + esc(m.text) + "</div>").join("") + '</div><form id="ph-form"><input id="ph-in" maxlength="140" placeholder="Écrire…" autocomplete="off"><button>➤</button></form>';
+      if (thread !== "monde" && th(thread).unread && Auth.user) Auth.markRead(th(thread).name || ""); th(thread).unread = 0; badge();
+      h = "<h4>" + esc(title) + (thread !== "monde" ? ' <button class="taxi" id="ph-menu" style="float:right;padding:2px 10px">⋯</button>' : "") + "</h4>" + (tmenu && thread !== "monde" ? '<div class="line"><button class="taxi" data-blk="1">🚫 Bloquer</button><button class="taxi" data-rep="1">🚩 Signaler</button></div>' : "") + (thread === "monde" && Net.status !== "online" ? '<p class="hint">Serveur ' + (Net.status === "connecting" ? "en cours de connexion (le serveur gratuit peut mettre 1 minute à se réveiller)…" : "hors ligne. Voir Réglages > Serveur.") + (Net.url ? "<br>Adresse utilisée : " + esc(Net.url) : "<br>Aucune adresse de serveur n'est enregistrée.") + "</p>" : "") + '<div class="msgs" id="ph-msgs">' + msgs.map((m) => '<div class="m ' + (m.me ? "me" : "") + '">' + (m.who && !m.me ? "<small>" + esc(m.who) + "</small>" : "") + esc(m.text) + "</div>").join("") + '</div><form id="ph-form"><input id="ph-in" maxlength="140" placeholder="Écrire…" autocomplete="off"><button>➤</button></form>';
     } else if (app === "bank") {
       h = '<div class="card big">' + G.fmt(s.money) + "</div><h4>Dernières opérations</h4>" + ((s.tx || []).slice().reverse().slice(0, 14).map((t) => '<div class="tx"><span>' + esc(t.label) + '</span><b class="' + (t.amt < 0 ? "neg" : "pos") + '">' + (t.amt > 0 ? "+" : "") + G.fmt(t.amt) + "</b></div>").join("") || '<p class="hint">Rien pour le moment.</p>');
     } else if (app === "obj") {
@@ -60,7 +70,7 @@ const Phone = (function () {
     else if (app === "set") {
       const st = Sound.set;
       h = '<label class="sw"><input type="checkbox" id="s-sfx" ' + (st.sfx ? "checked" : "") + '> Sons</label><label class="sw"><input type="checkbox" id="s-mus" ' + (st.music ? "checked" : "") + '> Musique</label><label class="sw">Volume <input type="range" id="s-vol" min="0" max="1" step="0.05" value="' + st.vol + '"></label>' +
-        '<label class="sw"><input type="checkbox" id="s-lite" ' + (G.lite() ? "checked" : "") + '> Mode léger (téléphone lent)</label>' + (Auth.user ? '<h4>Compte</h4><div class="line"><span style="flex:1;align-self:center">@' + esc(Auth.user.username) + '</span><button id="s-logout">Déconnexion</button></div><div style="display:none">' : '') + '<h4>Pseudo</h4><div class="line"><input id="s-name" maxlength="16" value="' + esc(s.name || "") + '"><button id="s-namebtn">OK</button></div>' + (Auth.user ? '</div>' : '') + '<h4>Serveur multijoueur</h4><div class="line"><input id="s-srv" placeholder="wss://…" value="' + esc(Net.url || "") + '"><button id="s-srvbtn">Connecter</button></div><p class="hint">' + ($("ph-net").textContent) + "</p>";
+        '<label class="sw"><input type="checkbox" id="s-lite" ' + (G.lite() ? "checked" : "") + '> Mode léger (téléphone lent)</label>' + (Auth.user ? '<h4>Compte</h4><div class="line"><span style="flex:1;align-self:center">@' + esc(Auth.user.username) + '</span><button id="s-logout">Déconnexion</button></div><h4>Mot de passe</h4><div class="line"><input id="s-pw" type="password" placeholder="Nouveau mot de passe" autocomplete="new-password"><button id="s-pwbtn">OK</button></div><div style="display:none">' : '') + '<h4>Pseudo</h4><div class="line"><input id="s-name" maxlength="16" value="' + esc(s.name || "") + '"><button id="s-namebtn">OK</button></div>' + (Auth.user ? '</div>' : '') + (blocked().length ? '<h4>Joueurs bloqués</h4>' + blocked().map((n) => '<div class="tx"><span>@' + esc(n) + '</span><button class="taxi" data-unblk="' + esc(n) + '">Débloquer</button></div>').join("") : '') + '<h4>Serveur multijoueur</h4><div class="line"><input id="s-srv" placeholder="wss://…" value="' + esc(Net.url || "") + '"><button id="s-srvbtn">Connecter</button></div><p class="hint">' + ($("ph-net").textContent) + "</p>";
     }
     body.innerHTML = h;
     const ms = $("ph-msgs"); if (ms) ms.scrollTop = ms.scrollHeight;
@@ -74,16 +84,26 @@ const Phone = (function () {
     Object.values(Net.players).forEach((p) => { c.fillStyle = "#1e88e5"; c.beginPath(); c.arc(p.x * k, p.y * k2, 4, 0, 7); c.fill(); });
     c.fillStyle = "#f7c948"; c.strokeStyle = "#000"; c.beginPath(); c.arc(S().x * k, S().y * k2, 6, 0, 7); c.fill(); c.stroke();
   }
+  function importDMs(rows) {
+    const me = (Auth.user && Auth.user.username) || "", ch = chats(); Object.keys(ch).forEach((k) => { if (k.startsWith("d:")) delete ch[k]; });
+    (rows || []).forEach((r) => { const mine = r.from_user === me, other = mine ? r.to_user : r.from_user; if (isBlocked(other)) return; const k = dkey(other), t = th(k); t.name = other; t.msgs.push({ me: mine, text: Filter.clean(r.text), ts: Date.parse(r.created_at) || Date.now() }); if (!mine && !r.read) t.unread = (t.unread || 0) + 1; });
+    Object.keys(ch).forEach((k) => { if (k.startsWith("d:")) ch[k].msgs = ch[k].msgs.slice(-40); }); badge(); if (open) draw();
+  }
   function init() {
     el = $("phone");
     el.innerHTML = '<button id="ph-x">✕ Fermer</button><div class="frame"><i class="isl"></i><div class="bar"><b id="ph-time"></b><span id="ph-net"></span></div><div id="ph-top"><button id="ph-back">‹</button><b id="ph-title"></b></div><div id="ph-body"></div><button id="ph-home" aria-label="Accueil"></button></div>';
     $("phone-btn").addEventListener("click", () => toggle());
     $("ph-x").addEventListener("click", () => toggle(false)); $("ph-home").addEventListener("click", () => { if (app === "home") { toggle(false); return; } app = "home"; thread = null; draw(); });
-    $("ph-back").addEventListener("click", () => { if (thread) thread = null; else app = "home"; draw(); });
+    $("ph-back").addEventListener("click", () => { tmenu = false; if (thread) thread = null; else app = "home"; draw(); });
     el.addEventListener("click", (e) => {
       if (e.target === el) { toggle(false); return; }
       const b = e.target.closest("button"); if (!b) return; Sound.play("click");
       if (b.dataset.buyv) { G.buyVeh(b.dataset.buyv); draw(); } else if (b.dataset.use !== undefined && b.hasAttribute("data-use")) { G.useVeh(b.dataset.use); draw(); } else if (b.dataset.house) { G.buyHouse(); draw(); } else if (b.dataset.go) { if (G.travel(b.dataset.go)) toggle(false); } else if (b.dataset.app) { app = b.dataset.app; thread = null; draw(); } else if (b.dataset.th) { thread = b.dataset.th; if (thread.startsWith("new:")) { const nm = thread.slice(4); thread = dkey(nm); th(thread).name = nm; } draw(); }
+      else if (b.id === "ph-menu") { tmenu = !tmenu; draw(); }
+      else if (b.dataset.blk) { const n = th(thread).name; if (n && confirm("Bloquer @" + n + " ?")) { blocked().push(n.toLowerCase()); delete chats()[thread]; thread = null; tmenu = false; G.save(); G.toast("🚫 @" + n + " est bloqué"); draw(); } }
+      else if (b.dataset.rep) { const n = th(thread).name, why = prompt("Pourquoi signaler @" + n + " ? (insultes, arnaque, harcèlement…)"); if (why) { const ctx = th(thread).msgs.slice(-6).map((m) => (m.me ? "moi" : n) + ": " + m.text).join(" | "); Auth.report(n, why, ctx).then((ok) => G.toast(ok ? "🚩 Signalement envoyé. Merci !" : "Signalement impossible pour le moment")); tmenu = false; draw(); } }
+      else if (b.dataset.unblk) { S().blocked = blocked().filter((x) => x !== b.dataset.unblk); G.save(); draw(); }
+      else if (b.id === "s-pwbtn") { const v = $("s-pw").value; if (v.length < 6) return G.toast("Mot de passe : 6 caractères minimum"); Auth.changePassword(v).then((er) => { G.toast(er ? "Erreur : " + er : "🔐 Mot de passe changé"); if (!er) $("s-pw").value = ""; }); }
       else if (b.id === "s-logout") { Auth.logout(); } else if (b.id === "s-namebtn") { const v = $("s-name").value.trim().slice(0, 16); if (v) { S().name = v; Net.connect(Net.url, v, { shirt: "#1e88e5", skin: "#a0673a" }); G.save(); G.toast("Pseudo : " + v); } }
       else if (b.id === "s-srvbtn") { const v = $("s-srv").value.trim(); try { localStorage.setItem("lvk-server", v); } catch (x) {} Net.connect(v, S().name, { shirt: "#1e88e5", skin: "#a0673a" }); setTimeout(draw, 800); }
     });
@@ -94,5 +114,5 @@ const Phone = (function () {
   }
   function toggle(v) { open = v === undefined ? !open : v; el.hidden = !open; if (open) { app = "home"; thread = null; draw(); } }
   function tick(dt) {}
-  return { init, tick, toggle, get open() { return open; } };
+  return { importDMs, init, tick, toggle, get open() { return open; } };
 })();
