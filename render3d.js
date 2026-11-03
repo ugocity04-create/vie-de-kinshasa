@@ -248,30 +248,43 @@ const R3D = (function () {
 
   // ---------- personnages, voitures, bateaux ----------
   function person(B, x, y, z, hd, o) {
-    const s = o.s || 1, bob = o.mv ? Math.abs(Math.sin(o.ph)) * 0.04 : 0, base = mul(T(x, y + bob * s, z), RY(hd)), sw = o.mv ? Math.sin(o.ph) * 0.75 : Math.sin(o.ph * 0.3) * 0.03;
+    const s = o.s || 1, ph = o.ph || 0, mv = !!o.mv, sit = !!o.sit, talk = !!o.say;
+    const amp = mv ? 0.75 : 0.03, bob = mv ? Math.abs(Math.sin(ph)) * 0.05 : Math.sin(ph * 0.12) * 0.012;
+    const base = mul(T(x, y + bob * s, z), RY(hd)), turn = mv ? 0 : Math.sin(ph * 0.05) * 0.35 + (talk ? Math.sin(ph * 0.4) * 0.12 : 0), hb = mul(base, RY(turn));
     const skin = o.skin, shirt = o.shirt, pants = o.pants || 0x263238, hair = o.hair || 0x1b1b1b, st = o.style === undefined ? ((o.shirt[0] * 7 + o.shirt[2] * 5) * 10 | 0) % 4 : o.style;
-    const dark = [skin[0] * 0.8, skin[1] * 0.75, skin[2] * 0.75];
+    const dark = [skin[0] * 0.8, skin[1] * 0.75, skin[2] * 0.75], legc = o.f ? skin : pants;
     for (const sd of [-1, 1]) {
-      const P = mul(base, mul(T(sd * 0.12 * s, 0.84 * s, 0), RX(o.sit ? -1.3 : sd * sw)));
-      B.box(mul(P, T(0, -0.2 * s, 0)), 0.2 * s, 0.4 * s, 0.22 * s, o.f ? skin : pants); B.box(mul(P, T(0, -0.6 * s, 0)), 0.18 * s, 0.4 * s, 0.2 * s, o.f ? skin : pants);
-      B.box(mul(P, T(0, -0.8 * s, 0.05 * s)), 0.21 * s, 0.1 * s, 0.32 * s, o.f ? 0x8d3b3b : 0xf0f0f0); B.box(mul(P, T(0, -0.86 * s, 0.05 * s)), 0.22 * s, 0.04 * s, 0.33 * s, 0x222222);
-      const A = mul(base, mul(T(sd * 0.33 * s, 1.47 * s, 0), RX(o.sit ? -0.9 : -sd * sw)));
-      B.box(mul(A, T(0, -0.13 * s, 0)), 0.15 * s, 0.28 * s, 0.17 * s, shirt); B.box(mul(A, T(0, -0.42 * s, 0)), 0.12 * s, 0.3 * s, 0.14 * s, skin); B.sphere(mul(A, T(0, -0.6 * s, 0)), 0.07 * s, 0.08 * s, 0.07 * s, skin, 0, 1, 6, 4);
-      B.sphere(mul(base, T(sd * 0.19 * s, 1.7 * s, 0)), 0.04 * s, 0.07 * s, 0.03 * s, dark, 0, 1, 5, 3);
-      B.box(mul(base, T(sd * 0.075 * s, 1.72 * s, 0.17 * s)), 0.06 * s, 0.045 * s, 0.02 * s, 0xffffff); B.box(mul(base, T(sd * 0.075 * s, 1.72 * s, 0.185 * s)), 0.03 * s, 0.035 * s, 0.01 * s, 0x111111);
-      B.box(mul(base, T(sd * 0.075 * s, 1.77 * s, 0.17 * s)), 0.08 * s, 0.015 * s, 0.02 * s, 0x1b1b1b);
+      const sw = Math.sin(ph) * sd, fwd = Math.max(0, Math.cos(ph) * sd * -1);       // jambe vers l'avant = lève le genou
+      const hipA = sit ? -1.35 : sw * amp, knee = sit ? 1.35 : mv ? Math.max(0, -Math.cos(ph) * sd) * 0.95 + 0.08 : 0.02;
+      const P = mul(base, mul(T(sd * 0.12 * s, 0.84 * s, 0), RX(hipA)));
+      B.box(mul(P, T(0, -0.2 * s, 0)), 0.2 * s, 0.4 * s, 0.22 * s, legc);
+      const K = mul(P, mul(T(0, -0.4 * s, 0), RX(knee)));
+      B.box(mul(K, T(0, -0.2 * s, 0)), 0.18 * s, 0.4 * s, 0.2 * s, legc);
+      B.box(mul(K, T(0, -0.4 * s, 0.05 * s)), 0.21 * s, 0.1 * s, 0.32 * s, o.f ? 0x8d3b3b : 0xf0f0f0); B.box(mul(K, T(0, -0.46 * s, 0.05 * s)), 0.22 * s, 0.04 * s, 0.33 * s, 0x222222);
+      let shA = sit ? -0.9 : -sw * amp * 0.9, elb = sit ? 0.5 : mv ? 0.25 + Math.max(0, -sw) * 0.7 : 0.12 + Math.sin(ph * 0.12 + sd) * 0.04;
+      if (talk && sd === 1) { shA = -2.5 + Math.sin(ph * 0.5) * 0.3; elb = 0.5 + Math.sin(ph * 0.5) * 0.4; }     // il salue / parle avec la main
+      const A = mul(base, mul(T(sd * 0.33 * s, 1.47 * s, 0), RX(shA)));
+      B.box(mul(A, T(0, -0.14 * s, 0)), 0.15 * s, 0.28 * s, 0.17 * s, shirt);
+      const E = mul(A, mul(T(0, -0.28 * s, 0), RX(-elb)));
+      B.box(mul(E, T(0, -0.15 * s, 0)), 0.12 * s, 0.3 * s, 0.14 * s, skin); B.sphere(mul(E, T(0, -0.33 * s, 0)), 0.07 * s, 0.08 * s, 0.07 * s, skin, 0, 1, 6, 4);
+      B.sphere(mul(hb, T(sd * 0.19 * s, 1.7 * s, 0)), 0.04 * s, 0.07 * s, 0.03 * s, dark, 0, 1, 5, 3);
+      const blink = Math.sin(ph * 0.31) > 0.985 ? 0.2 : 1;
+      B.box(mul(hb, T(sd * 0.075 * s, 1.72 * s, 0.17 * s)), 0.06 * s, 0.045 * s * blink, 0.02 * s, 0xffffff); B.box(mul(hb, T(sd * 0.075 * s, 1.72 * s, 0.185 * s)), 0.03 * s, 0.035 * s * blink, 0.01 * s, 0x111111);
+      B.box(mul(hb, T(sd * 0.075 * s, 1.77 * s, 0.17 * s)), 0.08 * s, 0.015 * s, 0.02 * s, 0x1b1b1b);
     }
-    B.box(mul(base, T(0, 1.17 * s, 0)), 0.5 * s, 0.6 * s, 0.28 * s, shirt); B.box(mul(base, T(0, 0.9 * s, 0)), 0.51 * s, 0.07 * s, 0.29 * s, o.f ? shirt : 0x3e2723);
+    const br = mv ? 0 : Math.sin(ph * 0.12) * 0.012;
+    B.box(mul(base, T(0, (1.17 + br) * s, 0)), 0.5 * s, 0.6 * s, 0.28 * s, shirt); B.box(mul(base, T(0, 0.9 * s, 0)), 0.51 * s, 0.07 * s, 0.29 * s, o.f ? shirt : 0x3e2723);
     B.box(mul(base, T(0, 1.46 * s, 0.01 * s)), 0.26 * s, 0.06 * s, 0.2 * s, [shirt[0] * 0.8, shirt[1] * 0.8, shirt[2] * 0.8]);
-    B.box(mul(base, T(0, 1.55 * s, 0)), 0.1 * s, 0.1 * s, 0.1 * s, skin);
-    B.sphere(mul(base, T(0, 1.7 * s, 0)), 0.18 * s, 0.2 * s, 0.18 * s, skin, 0, 1, 10, 7);
-    B.sphere(mul(base, T(0, 1.69 * s, 0.17 * s)), 0.035 * s, 0.045 * s, 0.035 * s, dark, 0, 1, 5, 3);
-    B.box(mul(base, T(0, 1.63 * s, 0.17 * s)), 0.07 * s, 0.015 * s, 0.02 * s, 0x6d2b2b);
-    if (st === 0) B.sphere(mul(base, T(0, 1.78 * s, -0.02 * s)), 0.2 * s, 0.15 * s, 0.2 * s, hair, 0, 1, 8, 4);
-    else if (st === 1) B.sphere(mul(base, T(0, 1.8 * s, -0.01 * s)), 0.25 * s, 0.22 * s, 0.25 * s, hair, 0, 1, 9, 5);
-    else if (st === 2) { B.sphere(mul(base, T(0, 1.76 * s, -0.02 * s)), 0.19 * s, 0.13 * s, 0.19 * s, hair, 0, 1, 8, 4); B.box(mul(base, T(0, 1.88 * s, -0.02 * s)), 0.14 * s, 0.1 * s, 0.3 * s, hair); }
-    else { B.sphere(mul(base, T(0, 1.8 * s, -0.02 * s)), 0.22 * s, 0.14 * s, 0.22 * s, 0xd32f2f, 0, 1, 8, 4); B.sphere(mul(base, T(0, 1.88 * s, -0.08 * s)), 0.12 * s, 0.1 * s, 0.12 * s, 0xd32f2f, 0, 1, 6, 3); }
-    if (o.f) { B.prism(mul(base, T(0, 0.74 * s, 0)), 10, 0.2 * s, 0.34 * s, 0.6 * s, o.dress || shirt); B.box(mul(base, T(0, 1.52 * s, -0.15 * s)), 0.34 * s, 0.5 * s, 0.1 * s, hair); }
+    B.box(mul(hb, T(0, 1.55 * s, 0)), 0.1 * s, 0.1 * s, 0.1 * s, skin);
+    B.sphere(mul(hb, T(0, 1.7 * s, 0)), 0.18 * s, 0.2 * s, 0.18 * s, skin, 0, 1, 10, 7);
+    B.sphere(mul(hb, T(0, 1.69 * s, 0.17 * s)), 0.035 * s, 0.045 * s, 0.035 * s, dark, 0, 1, 5, 3);
+    const mo = talk ? 0.03 + Math.abs(Math.sin(ph * 0.9)) * 0.025 : 0.015;
+    B.box(mul(hb, T(0, 1.63 * s, 0.17 * s)), 0.07 * s, mo * s, 0.02 * s, 0x6d2b2b);
+    if (st === 0) B.sphere(mul(hb, T(0, 1.78 * s, -0.02 * s)), 0.2 * s, 0.15 * s, 0.2 * s, hair, 0, 1, 8, 4);
+    else if (st === 1) B.sphere(mul(hb, T(0, 1.8 * s, -0.01 * s)), 0.25 * s, 0.22 * s, 0.25 * s, hair, 0, 1, 9, 5);
+    else if (st === 2) { B.sphere(mul(hb, T(0, 1.76 * s, -0.02 * s)), 0.19 * s, 0.13 * s, 0.19 * s, hair, 0, 1, 8, 4); B.box(mul(hb, T(0, 1.88 * s, -0.02 * s)), 0.14 * s, 0.1 * s, 0.3 * s, hair); }
+    else { B.sphere(mul(hb, T(0, 1.8 * s, -0.02 * s)), 0.22 * s, 0.14 * s, 0.22 * s, 0xd32f2f, 0, 1, 8, 4); B.sphere(mul(hb, T(0, 1.88 * s, -0.08 * s)), 0.12 * s, 0.1 * s, 0.12 * s, 0xd32f2f, 0, 1, 6, 3); }
+    if (o.f) { B.prism(mul(base, T(0, 0.74 * s, 0)), 10, 0.2 * s, 0.34 * s, 0.6 * s, o.dress || shirt); B.box(mul(hb, T(0, 1.52 * s, -0.15 * s)), 0.34 * s, 0.5 * s, 0.1 * s, hair); }
   }
   const CARS = ["sedan", "taxi", "suv", "van", "hatchback-sports", "delivery", "sedan-sports", "suv-luxury", "truck"];
   function car(B, x, y, z, hd, pitch, type, color, lights) {
@@ -300,7 +313,7 @@ const R3D = (function () {
     if (ROADS.h.some((r) => y > r.y && y < r.y + r.h) || ROADS.v.some((r) => x > r.x && x < r.x + r.w)) return 0.02;
     return 0.2;
   }
-  const look = (n) => ({ skin: C(n.skin), shirt: C(n.shirt), pants: C(n.pants || "#263238"), f: n.f, ph: n.t * 8, mv: n.moving !== false, hair: C(n.hair || "#1b1b1b") });
+  const look = (n) => ({ skin: C(n.skin), shirt: C(n.shirt), pants: C(n.pants || "#263238"), f: n.f, ph: n.t * 8, mv: n.moving !== false, say: !!n.say, hair: C(n.hair || "#1b1b1b") });
 
   // ---------- caméra et lumière ----------
   let tx = 0, tz = 0, tIn = false;
@@ -356,7 +369,7 @@ const R3D = (function () {
     else person(B, px, py, pz, S.hd || 0, pl);
     B2.prism(T(px, py + 0.02, pz), 8, 0.45, 0.45, 0.01, 0, 0, 0.3);
     // autres joueurs
-    if (window.Net) Object.values(Net.players).forEach((p) => { if (p.sc) return; const x = p.x / U, z = p.y / U, y = groundY(p.x, p.y); person(B, x, y, z, p.hd || 0, { skin: C(p.skin || "#a0673a"), shirt: C(p.shirt || "#1e88e5"), pants: C("#263238"), ph: t * 9, mv: p.mv, f: false }); B2.prism(T(x, y + 0.02, z), 8, 0.4, 0.4, 0.01, 0, 0, 0.3); });
+    if (window.Net) Object.values(Net.players).forEach((p) => { if (p.sc) return; const x = p.x / U, z = p.y / U, y = groundY(p.x, p.y); person(B, x, y, z, p.hd || 0, { skin: C(p.skin || "#a0673a"), shirt: C(p.shirt || "#1e88e5"), pants: C("#263238"), ph: t * 9, mv: p.mv, say: !!p.say, f: false }); B2.prism(T(x, y + 0.02, z), 8, 0.4, 0.4, 0.01, 0, 0, 0.3); });
     if (S.kiosk) { const k = BUILDINGS.find((q) => q.id === "kiosk"); stall(B, k); B.at((k.x + k.w / 2) / U, 0.2 + 3.2, (k.y + k.h) / U, 2, 0.5, 0.1, 0xf7c948); }
     // l'eau qui brille
     for (let i = 0; i < 70; i++) { const x = tx - 35 + ((i * 53.7 + t * 1.6) % 70), z = tz - 35 + ((i * 29.3 + i * i * 0.7) % 70), px2 = x * U, pz2 = z * U;
