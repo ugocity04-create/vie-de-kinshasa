@@ -62,6 +62,7 @@ const SKIN = (function () {
         anims[nm] = { ch, dur };
       });
       D = { N, parent, rest, byName, joints, ibm, pos, nrm, jn, wt, idx, nv, zone, shade, anims, nj: joints.length, head: byName["Head"], sp: new Float32Array(nv * 3), sn: new Float32Array(nv * 3), jm: new Float32Array(joints.length * 16), gl: new Float32Array(N * 16), loc: new Float32Array(N * 16), tmp: new Float32Array(16), done: new Uint8Array(N) };
+      D.low = bj.nodes.map((n) => /Leg|Foot|Toes|Hips/.test(n.name) && !/Ctrl|IK|Roll/.test(n.name));
       D.tq = new Float32Array(4); D.q1 = new Float32Array(4); D.q2 = new Float32Array(4); D.tv = [0, 0, 0]; D.sv = [1, 1, 1];
       D.cur = rest.map((r) => ({ t: r.t.slice(), q: r.q.slice(), s: r.s.slice() }));
       ready = true; console.log("personnages animés prêts", nv, "points,", Object.keys(anims).join(","));
@@ -76,6 +77,7 @@ const SKIN = (function () {
   function pose(name, time) {
     const a = D.anims[name]; D.rest.forEach((r, i) => { const c = D.cur[i]; c.t[0] = r.t[0]; c.t[1] = r.t[1]; c.t[2] = r.t[2]; c.q[0] = r.q[0]; c.q[1] = r.q[1]; c.q[2] = r.q[2]; c.q[3] = r.q[3]; c.s[0] = r.s[0]; c.s[1] = r.s[1]; c.s[2] = r.s[2]; });
     if (a) a.ch.forEach((c) => sample(c, time, a.dur));
+    if (name === "Idle") D.rest.forEach((r, i) => { if (D.low[i]) { const c = D.cur[i]; c.t[0] = r.t[0]; c.t[1] = r.t[1]; c.t[2] = r.t[2]; c.q[0] = r.q[0]; c.q[1] = r.q[1]; c.q[2] = r.q[2]; c.q[3] = r.q[3]; } });   // l'animation "idle" du pack a les jambes en pleine foulée : on garde les jambes droites
     D.done.fill(0);
     const glob = (i) => { if (D.done[i]) return; D.done[i] = 1; const c = D.cur[i], L = trs(c.t, c.q, c.s, D.loc.subarray(i * 16, i * 16 + 16)), p = D.parent[i], G = D.gl.subarray(i * 16, i * 16 + 16); if (p < 0) G.set(L); else { glob(p); mmul(D.gl.subarray(p * 16, p * 16 + 16), L, G); } };
     for (let k = 0; k < D.nj; k++) { const ni = D.joints[k]; glob(ni); mmul(D.gl.subarray(ni * 16, ni * 16 + 16), D.ibm.subarray(k * 16, k * 16 + 16), D.jm.subarray(k * 16, k * 16 + 16)); }
