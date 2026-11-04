@@ -463,6 +463,7 @@
   window.__lvk = { get S() { return S; }, BUILDINGS, enter, leave, onAct, setHour(h) { fakeHour = h; }, get scene() { return scene; }, get ff() { return ff; }, get ip() { return ip; }, doItem, get room() { return room; } };
   R3D.setZoom(1.45);
   { const lb = document.createElement("div"); lb.style.cssText = "position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;font:600 12px system-ui;padding:6px 12px;border-radius:99px;z-index:4;pointer-events:none"; document.body.appendChild(lb);
+    if (typeof SKIN !== "undefined") SKIN.load("models/char");
     GLBM.loadAll("models", (d, n) => { lb.textContent = "🏙️ Chargement des bâtiments… " + d + "/" + n; if (d === Math.round(n / 2)) R3D.refresh(); }).then(() => { R3D.refresh(); lb.remove(); }); }
   function begin() {
     Phone.init(); checkDate(); hud(); if (S.started) netStart();
