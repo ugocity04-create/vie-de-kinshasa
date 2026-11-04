@@ -94,3 +94,15 @@ button.taxi{background:#f5c518;color:#222;border:0;border-radius:10px;padding:8p
 
 #ph-x { position: fixed !important; top: 10px !important; right: 12px !important; left: auto !important; z-index: 20 !important; }
 #phone .frame { margin-top: 44px; }
+
+/* éditeur d'apparence */
+body.avmode #hud, body.avmode #stick, body.avmode #act, body.avmode #toasts, body.avmode #mission, body.avmode #phone-btn, body.avmode #snd, body.avmode #modal { display: none !important; }
+#avedit { position: fixed; inset: 0; z-index: 9; display: flex; flex-direction: column; font-family: system-ui, sans-serif; touch-action: none; }
+.av-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
+.av-top h3 { color: #12203a; font-size: 1.15rem; } .av-rd { width: 46px; height: 46px; border-radius: 50%; border: none; background: #fff; font-size: 1.4rem; box-shadow: 0 4px 14px rgba(0,0,0,.18); color: #12203a; }
+.av-view { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px; }
+.av-pill { display: flex; background: #fff; border-radius: 99px; padding: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.18); } .av-pill button { border: none; background: none; padding: 10px 22px; border-radius: 99px; font-weight: 700; color: #6b7690; font-size: 1rem; } .av-pill button.on { background: #12203a; color: #fff; }
+.av-sheet { background: #fff; border-radius: 26px 26px 0 0; padding: 16px 14px calc(14px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 84px 1fr; gap: 12px; max-height: 52vh; box-shadow: 0 -8px 30px rgba(0,0,0,.18); color: #12203a; }
+.av-rail { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; } .av-rail button { border: none; background: #eef1f6; border-radius: 18px; padding: 10px 4px; font-weight: 700; font-size: .78rem; color: #51607d; display: flex; flex-direction: column; align-items: center; gap: 2px; } .av-rail button span { font-size: 1.4rem; } .av-rail button.on { background: #12203a; color: #fff; }
+.av-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; overflow-y: auto; align-content: start; } .av-grid button { border: 3px solid transparent; background: #eef4fb; border-radius: 16px; padding: 10px 4px 8px; font-weight: 600; font-size: .82rem; color: #12203a; display: flex; flex-direction: column; align-items: center; gap: 6px; } .av-grid button.on { border-color: #0f8a4f; background: #e5f6ec; } .av-grid i { width: 46px; height: 46px; border-radius: 50%; border: 2px solid rgba(0,0,0,.12); display: block; }
+.av-done { grid-column: 1 / -1; border: none; border-radius: 99px; background: #0f8a4f; color: #fff; font-weight: 800; font-size: 1.15rem; padding: 15px; box-shadow: 0 5px 0 #0a6a3c; }
