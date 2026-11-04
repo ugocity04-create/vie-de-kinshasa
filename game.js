@@ -249,9 +249,35 @@
       }, ch.cost && S.money < ch.cost));
     }, true);
   }
+
+  // ====== APPARENCE DU PERSONNAGE ======
+  const AV_DEF = { skin: "#8d5524", hair: "#1b1b1b", shirt: "#f7c948", pants: "#1a237e" };
+  const AV_OPT = {
+    skin: ["#f1c7a0", "#d9a066", "#b9773f", "#8d5524", "#6b3e1f", "#4a2a14", "#34200f"],
+    hair: ["#1b1b1b", "#3e2723", "#6d4c41", "#b71c1c", "#e0b030", "#9e9e9e", "#7b1fa2", "#1565c0"],
+    shirt: ["#f7c948", "#e53935", "#1e88e5", "#43a047", "#ffffff", "#212121", "#ff7043", "#8e24aa", "#00acc1", "#fdd835"],
+    pants: ["#1a237e", "#263238", "#3e2723", "#37474f", "#827717", "#b0bec5", "#880e4f", "#1b5e20"]
+  };
+  const AV_LAB = { skin: "Peau", hair: "Cheveux", shirt: "Haut", pants: "Pantalon" };
+  function av() { S.av = Object.assign({}, AV_DEF, S.av || {}); return S.av; }
+  function netLook() { const a = av(); return { shirt: a.shirt, skin: a.skin, hair: a.hair, pants: a.pants }; }
+  function avatarEditor(done) {
+    openModal("🎨 Mon apparence", "Touche une couleur : ton personnage change tout de suite.", (box) => {
+      Object.keys(AV_OPT).forEach((k) => {
+        const lab = document.createElement("p"); lab.className = "hint"; lab.textContent = AV_LAB[k]; box.appendChild(lab);
+        const row = document.createElement("div"); row.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 10px";
+        AV_OPT[k].forEach((c) => {
+          const b = document.createElement("button"); b.style.cssText = "width:36px;height:36px;border-radius:50%;border:3px solid " + (av()[k] === c ? "#fff" : "rgba(255,255,255,.2)") + ";background:" + c + ";padding:0";
+          b.addEventListener("click", () => { av()[k] = c; save(); if (window.Net) Net.sendLook(netLook()); refreshModal(); }); row.appendChild(b);
+        }); box.appendChild(row);
+      });
+      addBtn(box, "✅ C'est bon", "", () => { modalLocked = false; closeModal(); if (done) done(); });
+    }, true);
+  }
   function openStart() {
     openModal(T.title, T.chooseStart, (box) => {
       const inp = document.createElement("input"); inp.id = "name-in"; inp.maxLength = 16; inp.placeholder = "Ton pseudo"; inp.value = S.name || "Joueur" + Math.floor(100 + Math.random() * 900); if (Auth.user) { inp.value = Auth.user.username; inp.readOnly = true; } inp.className = "namein"; box.appendChild(inp);
+      addBtn(box, "🎨 Mon apparence", "Peau, cheveux, vêtements", () => { S.name = (inp.value || "Joueur").trim().slice(0, 16); avatarEditor(openStart); });
       PROFILES.forEach((pr) => addBtn(box, pr.name, pr.desc, () => {
         S.name = (inp.value || "Joueur").trim().slice(0, 16); netStart(); S.started = true; S.money = pr.money; S.rep = pr.rep; S.date = todayKey(); modalLocked = false; closeModal();
         toast(T.startMsg.replace("5 000 FC", fmt(pr.money))); toast(T.moveHint); save(); dailyReward();
@@ -412,7 +438,7 @@
     if (S.started) { Net.sendPos(dt, scene ? ip.x : S.x, scene ? ip.y : S.y, scene ? scene.id : null, S.hd || 0, pl.moving); Sound.tick(dt, { walking: pl.moving, moto: S.moto, scene: !!scene, raining: raining > 0, night: darkness() > 0.5 }); }
     R3D.render(dt); requestAnimationFrame(frame);
   }
-  function netStart() { let url = SERVER_URL; try { url = localStorage.getItem("lvk-server") || url; } catch (e) {} Net.connect(url, S.name, { shirt: "#1e88e5", skin: "#a0673a" }, Auth.token()); }
+  function netStart() { let url = SERVER_URL; try { url = localStorage.getItem("lvk-server") || url; } catch (e) {} Net.connect(url, S.name, netLook(), Auth.token()); }
   // TAXI : voyager vers un quartier contre de l'argent (ou marcher, plus long)
   const ZSOON = ["aeroport", "brazza"];
   function zoneCenter(z) { return { x: z.x + z.w / 2, y: z.y + z.h / 2 }; }
@@ -458,7 +484,7 @@
       b.jobs.forEach((id) => { const j = JOBS.find((q) => q.id === id); if (j && z) out.push({ j, b, z, locked: S.rep < j.rep }); }); });
     return out.sort((a, b) => a.j.pay - b.j.pay);
   }
-  window.G = { VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
+  window.G = { avatarEditor, av, netLook, VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
     cars, npcs, boats, trees, lamps, darkness, nowH, fmt, hh, toast, save, lite: () => lite, setLite(b) { lite = b; try { localStorage.setItem("lvk-lite", b ? "1" : "0"); } catch (e) {} resize(); } };
   window.__lvk = { get S() { return S; }, BUILDINGS, enter, leave, onAct, setHour(h) { fakeHour = h; }, get scene() { return scene; }, get ff() { return ff; }, get ip() { return ip; }, doItem, get room() { return room; } };
   R3D.setZoom(1.45);
