@@ -253,26 +253,34 @@
   // ====== APPARENCE DU PERSONNAGE ======
   const AV_DEF = { skin: "#8d5524", hair: "#1b1b1b", shirt: "#f7c948", pants: "#1a237e" };
   const AV_OPT = {
-    skin: ["#f1c7a0", "#d9a066", "#b9773f", "#8d5524", "#6b3e1f", "#4a2a14", "#34200f"],
-    hair: ["#1b1b1b", "#3e2723", "#6d4c41", "#b71c1c", "#e0b030", "#9e9e9e", "#7b1fa2", "#1565c0"],
-    shirt: ["#f7c948", "#e53935", "#1e88e5", "#43a047", "#ffffff", "#212121", "#ff7043", "#8e24aa", "#00acc1", "#fdd835"],
-    pants: ["#1a237e", "#263238", "#3e2723", "#37474f", "#827717", "#b0bec5", "#880e4f", "#1b5e20"]
+    hair: [["#1b1b1b", "Noir"], ["#3e2723", "Brun foncé"], ["#6d4c41", "Brun"], ["#b71c1c", "Rouge"], ["#e0b030", "Blond"], ["#9e9e9e", "Gris"], ["#7b1fa2", "Violet"], ["#1565c0", "Bleu"]],
+    skin: [["#f1c7a0", "Clair"], ["#d9a066", "Miel"], ["#b9773f", "Cuivré"], ["#8d5524", "Brun"], ["#6b3e1f", "Brun foncé"], ["#4a2a14", "Ébène"], ["#34200f", "Nuit"]],
+    shirt: [["#f7c948", "Jaune"], ["#e53935", "Rouge"], ["#1e88e5", "Bleu"], ["#43a047", "Vert"], ["#ffffff", "Blanc"], ["#212121", "Noir"], ["#ff7043", "Orange"], ["#8e24aa", "Violet"], ["#00acc1", "Turquoise"], ["#fdd835", "Citron"], ["#ec407a", "Rose"], ["#455a64", "Gris bleu"]],
+    pants: [["#1a237e", "Jean bleu"], ["#263238", "Anthracite"], ["#3e2723", "Marron"], ["#37474f", "Gris"], ["#827717", "Kaki"], ["#b0bec5", "Clair"], ["#880e4f", "Bordeaux"], ["#1b5e20", "Vert"]]
   };
-  const AV_LAB = { skin: "Peau", hair: "Cheveux", shirt: "Haut", pants: "Pantalon" };
+  const AV_TABS = [["hair", "✂️", "Cheveux"], ["skin", "🎨", "Peau"], ["shirt", "👕", "Haut"], ["pants", "👖", "Pantalon"]];
   function av() { S.av = Object.assign({}, AV_DEF, S.av || {}); return S.av; }
   function netLook() { const a = av(); return { shirt: a.shirt, skin: a.skin, hair: a.hair, pants: a.pants }; }
   function avatarEditor(done) {
-    openModal("🎨 Mon apparence", "Touche une couleur : ton personnage change tout de suite.", (box) => {
-      Object.keys(AV_OPT).forEach((k) => {
-        const lab = document.createElement("p"); lab.className = "hint"; lab.textContent = AV_LAB[k]; box.appendChild(lab);
-        const row = document.createElement("div"); row.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 10px";
-        AV_OPT[k].forEach((c) => {
-          const b = document.createElement("button"); b.style.cssText = "width:36px;height:36px;border-radius:50%;border:3px solid " + (av()[k] === c ? "#fff" : "rgba(255,255,255,.2)") + ";background:" + c + ";padding:0";
-          b.addEventListener("click", () => { av()[k] = c; save(); if (window.Net) Net.sendLook(netLook()); refreshModal(); }); row.appendChild(b);
-        }); box.appendChild(row);
-      });
-      addBtn(box, "✅ C'est bon", "", () => { modalLocked = false; closeModal(); if (done) done(); });
-    }, true);
+    closeModal(); R3D.setPreview(true); document.body.classList.add("avmode");
+    let tab = "hair", ov = document.createElement("div"); ov.id = "avedit";
+    const finish = () => { R3D.setPreview(false); document.body.classList.remove("avmode"); ov.remove(); save(); if (window.Net) Net.sendLook(netLook()); if (done) done(); };
+    function paint() {
+      ov.innerHTML = '<div class="av-top"><button class="av-rd" id="av-back">‹</button><h3>Mon look</h3><button class="av-rd" id="av-rnd">🔀</button></div>' +
+        '<div class="av-view"><div class="av-pill"><button data-v="1" class="' + (R3D.pv && R3D.pv.face ? "on" : "") + '">Visage</button><button data-v="0" class="' + (R3D.pv && !R3D.pv.face ? "on" : "") + '">Corps</button></div></div>' +
+        '<div class="av-sheet"><div class="av-rail">' + AV_TABS.map((t) => '<button data-t="' + t[0] + '" class="' + (tab === t[0] ? "on" : "") + '"><span>' + t[1] + "</span>" + t[2] + "</button>").join("") + '</div><div class="av-grid">' +
+        AV_OPT[tab].map((o) => '<button data-c="' + o[0] + '" class="' + (av()[tab] === o[0] ? "on" : "") + '"><i style="background:' + o[0] + '"></i>' + o[1] + "</button>").join("") + '</div><button class="av-done" id="av-done">Terminé</button></div>';
+      ov.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.t; Sound.play("click"); paint(); }));
+      ov.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => { av()[tab] = b.dataset.c; Sound.play("click"); paint(); }));
+      ov.querySelectorAll("[data-v]").forEach((b) => b.addEventListener("click", () => { if (R3D.pv) R3D.pv.face = b.dataset.v === "1"; paint(); }));
+      $("av-done").onclick = finish; $("av-back").onclick = finish;
+      $("av-rnd").onclick = () => { Object.keys(AV_OPT).forEach((k) => { av()[k] = pick(AV_OPT[k])[0]; }); paint(); };
+    }
+    const view = () => ov.querySelector(".av-view");
+    let sx = null; ov.addEventListener("pointerdown", (e) => { if (e.target.closest(".av-view") && !e.target.closest("button")) { sx = e.clientX; if (R3D.pv) R3D.pv.drag = true; } });
+    window.addEventListener("pointermove", (e) => { if (sx !== null && R3D.pv) { R3D.pv.yaw -= (e.clientX - sx) * 0.012; sx = e.clientX; } });
+    window.addEventListener("pointerup", () => { sx = null; if (R3D.pv) R3D.pv.drag = false; });
+    document.body.appendChild(ov); paint();
   }
   function openStart() {
     openModal(T.title, T.chooseStart, (box) => {
