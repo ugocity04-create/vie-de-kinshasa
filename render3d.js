@@ -247,7 +247,14 @@ const R3D = (function () {
   }
 
   // ---------- personnages, voitures, bateaux ----------
+  let skinN = 0;
+  const RGB = (v) => typeof v === "number" ? [(v >> 16 & 255) / 255, (v >> 8 & 255) / 255, (v & 255) / 255] : v;
   function person(B, x, y, z, hd, o) {
+    if (!o.sit && typeof SKIN !== "undefined" && SKIN.isReady() && skinN < 40) {
+      skinN++;
+      const hairs = [[0.1, 0.07, 0.06], [0.16, 0.1, 0.07], [0.05, 0.05, 0.05]], hc = o.hair !== undefined ? RGB(o.hair) : hairs[((o.shirt[0] * 9 + o.shirt[2] * 7) * 10 | 0) % 3];
+      if (SKIN.draw(B, mul(T(x, y, z), RY(hd)), 0.5 * (o.s || 1), o.mv ? "Run" : "Idle", (o.ph || 0) * (o.mv ? 0.09 : 0.06), { skin: RGB(o.skin), hair: hc, shirt: RGB(o.shirt), pants: RGB(o.pants || 0x263238) })) return;
+    }
     const s = o.s || 1, ph = o.ph || 0, mv = !!o.mv, sit = !!o.sit, talk = !!o.say;
     const amp = mv ? 0.75 : 0.03, bob = mv ? Math.abs(Math.sin(ph)) * 0.05 : Math.sin(ph * 0.12) * 0.012;
     const base = mul(T(x, y + bob * s, z), RY(hd)), turn = mv ? 0 : Math.sin(ph * 0.05) * 0.35 + (talk ? Math.sin(ph * 0.4) * 0.12 : 0), hb = mul(base, RY(turn));
@@ -427,7 +434,7 @@ const R3D = (function () {
   function render(dt) {
     if (lost) return;
     if (!built || builtZone !== G.curZone().id) buildStatic();
-    pi = 0; DB.clear(); TB.clear();
+    pi = 0; skinN = 0; DB.clear(); TB.clear();
     const dk = G.darkness(), t = G.time, indoors = !!G.scene;
     setup(dk, indoors, dt);
     if (indoors) drawRoom(dk, t); else drawCity(dk, t);
