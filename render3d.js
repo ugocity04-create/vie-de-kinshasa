@@ -431,8 +431,30 @@ const R3D = (function () {
   }
 
   // ---------- image complète ----------
+  // ---------- aperçu du personnage (éditeur d'apparence) ----------
+  function renderPreview(dt) {
+    const P = out.pv, asp = W / H, k = Math.min(1, dt * 6), tgtTy = P.face ? 1.62 : 0.95, tgtD = P.face ? 2.1 : 4.9;
+    P.ty += (tgtTy - P.ty) * k; P.d += (tgtD - P.d) * k; if (!P.drag) P.yaw += dt * 0.25;
+    const vh = 2 * P.d * Math.tan(0.425), ty = P.ty - vh * (asp < 1 ? 0.22 : 0.1), eye = [Math.sin(P.yaw) * P.d, ty + P.d * 0.08, Math.cos(P.yaw) * P.d];
+    vp = mulN(persp(0.85, asp, 0.1, 100), lookAt(eye, [0, ty, 0], [0, 1, 0])); cam = eye;
+    const sky = [0.72, 0.86, 0.97];
+    gl.clearColor(sky[0], sky[1], sky[2], 1); gl.useProgram(prog);
+    gl.uniformMatrix4fv(L.uVP, false, vp); gl.uniform3fv(L.uCam, eye);
+    gl.uniform3f(L.uSunDir, 0.35, 0.7, 0.6); gl.uniform3fv(L.uSunCol, [0.75, 0.7, 0.62]); gl.uniform3fv(L.uAmb, [0.72, 0.72, 0.78]); gl.uniform3fv(L.uGnd, [0.5, 0.5, 0.52]);
+    gl.uniform3fv(L.uFog, sky); gl.uniform1f(L.uFogN, 400); gl.uniform1f(L.uFogF, 500);
+    pi = 0; skinN = 0; DB.clear(); TB.clear();
+    const A = G.av(), n = performance.now() / 1000;
+    person(DB, 0, 0, 0, 0, { skin: C(A.skin), shirt: C(A.shirt), pants: C(A.pants), hair: C(A.hair), ph: n * 9, mv: false, say: false });
+    TB.prism(T(0, 0.01, 0), 14, 0.8, 0.8, 0.01, 0, 0, 0.18);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.disable(gl.BLEND); gl.depthMask(true);
+    upload(dynBuf, DB, gl.DYNAMIC_DRAW); draw(dynBuf, DB.n);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
+    upload(trBuf, TB, gl.DYNAMIC_DRAW); draw(trBuf, TB.n);
+    gl.depthMask(true); gl.disable(gl.BLEND); oc.setTransform(dpr, 0, 0, dpr, 0, 0); oc.clearRect(0, 0, W, H);
+  }
   function render(dt) {
     if (lost) return;
+    if (out.pv) { renderPreview(dt); return; }
     if (!built || builtZone !== G.curZone().id) buildStatic();
     pi = 0; skinN = 0; DB.clear(); TB.clear();
     const dk = G.darkness(), t = G.time, indoors = !!G.scene;
@@ -463,5 +485,5 @@ const R3D = (function () {
       if (G.raining > 0) { oc.strokeStyle = "rgba(190,210,255,.55)"; oc.lineWidth = 1.2; oc.beginPath(); for (let i = 0; i < 130; i++) { const x = ((i * 97 + G.time * 220) % (W + 40)) - 20, y = (i * 61 + G.time * 700) % H; oc.moveTo(x, y); oc.lineTo(x - 4, y + 14); } oc.stroke(); }
     }
   }
-  return { refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(2.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
+  return { refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setPreview(on) { out.pv = on ? { yaw: Math.PI, ty: 1.2, d: 3, face: true, drag: false } : null; }, get pv() { return out.pv; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(2.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
 })();
