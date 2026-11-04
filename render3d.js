@@ -371,12 +371,12 @@ const R3D = (function () {
     });
     G.boats.forEach((b) => { if (nearU(b.x / U, b.y / U, 80)) boat(B, b.x / U, b.y / U, b.v > 0 ? 0 : Math.PI, t); });
     // joueur
-    const px = S.x / U, pz = S.y / U, py = groundY(S.x, S.y), pl = { skin: C("#8d5524"), shirt: C("#f7c948"), pants: C("#1a237e"), ph: t * 11, mv: G.pl.moving, sit: S.moto, f: false };
+    const px = S.x / U, pz = S.y / U, py = groundY(S.x, S.y), AV = G.av(), pl = { skin: C(AV.skin), shirt: C(AV.shirt), pants: C(AV.pants), hair: C(AV.hair), ph: t * 11, mv: G.pl.moving, sit: S.moto, f: false };
     if (S.moto) { const base = mul(T(px, py, pz), RY(S.hd || 0)); for (const s of [-1, 1]) B.prism(mul(mul(base, T(0, 0.38, s * 0.6)), RZ(Math.PI / 2)), 10, 0.38, 0.38, 0.2, 0x1b1b1b); B.box(mul(base, T(0, 0.55, 0)), 0.3, 0.3, 1.2, 0xc62828); B.box(mul(base, T(0, 0.85, 0.55)), 0.9, 0.08, 0.1, 0x555555); person(B, px, py + 0.5, pz, S.hd || 0, pl); }
     else person(B, px, py, pz, S.hd || 0, pl);
     B2.prism(T(px, py + 0.02, pz), 8, 0.45, 0.45, 0.01, 0, 0, 0.3);
     // autres joueurs
-    if (window.Net) Object.values(Net.players).forEach((p) => { if (p.sc) return; const x = p.x / U, z = p.y / U, y = groundY(p.x, p.y); person(B, x, y, z, p.hd || 0, { skin: C(p.skin || "#a0673a"), shirt: C(p.shirt || "#1e88e5"), pants: C("#263238"), ph: t * 9, mv: p.mv, say: !!p.say, f: false }); B2.prism(T(x, y + 0.02, z), 8, 0.4, 0.4, 0.01, 0, 0, 0.3); });
+    if (window.Net) Object.values(Net.players).forEach((p) => { if (p.sc) return; const x = p.x / U, z = p.y / U, y = groundY(p.x, p.y); person(B, x, y, z, p.hd || 0, { skin: C(p.skin || "#a0673a"), shirt: C(p.shirt || "#1e88e5"), pants: C(p.pants || "#263238"), hair: C(p.hair || "#1b1b1b"), ph: t * 9, mv: p.mv, say: !!p.say, f: false }); B2.prism(T(x, y + 0.02, z), 8, 0.4, 0.4, 0.01, 0, 0, 0.3); });
     if (S.kiosk) { const k = BUILDINGS.find((q) => q.id === "kiosk"); stall(B, k); B.at((k.x + k.w / 2) / U, 0.2 + 3.2, (k.y + k.h) / U, 2, 0.5, 0.1, 0xf7c948); }
     // l'eau qui brille
     for (let i = 0; i < 70; i++) { const x = tx - 35 + ((i * 53.7 + t * 1.6) % 70), z = tz - 35 + ((i * 29.3 + i * i * 0.7) % 70), px2 = x * U, pz2 = z * U;
@@ -423,7 +423,7 @@ const R3D = (function () {
     B.at(5, 0.5, 26.2, 10, 1, 0.4, b.wall); B.at(19, 0.5, 26.2, 10, 1, 0.4, b.wall); B.flat(12, 0.03, 25.4, 4, 1.4, 0x4a3320); B.at(12, 2.2, 26.4, 4.4, 0.25, 0.3, 0x5d4037);
     R.items.forEach((it) => item3D(B, it, t));
     const px = ip.x / U, pz = ip.y / U;
-    person(B, px, 0.02, pz, G.S.hd || 0, { skin: C("#8d5524"), shirt: C("#f7c948"), pants: C("#1a237e"), ph: t * 11, mv: G.pl.moving });
+    person(B, px, 0.02, pz, G.S.hd || 0, { skin: C(G.av().skin), shirt: C(G.av().shirt), pants: C(G.av().pants), hair: C(G.av().hair), ph: t * 11, mv: G.pl.moving });
     TB.prism(T(px, 0.03, pz), 8, 0.45, 0.45, 0.01, 0, 0, 0.3);
     const ni = G.nearItem;
     if (ni && ni !== "door") TB.flat((ni.x + ni.w / 2) / U, 0.07, (ni.y + ni.h / 2) / U, ni.w / U + 1, ni.h / U + 1, 0xf7c948, 0.3 + 0.15 * Math.sin(t * 6));
