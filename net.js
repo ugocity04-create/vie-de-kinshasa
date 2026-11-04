@@ -16,7 +16,7 @@ const Net = (function () {
     if (!N.url) { setStatus("offline"); return; }
     setStatus("connecting");
     try { ws = new WebSocket(N.url); } catch (e) { setStatus("offline"); return; }
-    ws.onopen = () => { retry = 0; setStatus("online"); N.send({ t: "hello", name, shirt: look.shirt, skin: look.skin, token }); };
+    ws.onopen = () => { retry = 0; setStatus("online"); N.send({ t: "hello", name, shirt: look.shirt, skin: look.skin, hair: look.hair, pants: look.pants, token }); };
     ws.onmessage = (m) => {
       let d; try { d = JSON.parse(m.data); } catch (e) { return; }
       if (d.t === "welcome") N.id = d.id;
@@ -34,6 +34,7 @@ const Net = (function () {
     ws.onerror = () => {};
   };
   N.send = (o) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
+  N.sendLook = function (lk) { look = lk || look; N.send({ t: "look", shirt: look.shirt, skin: look.skin, hair: look.hair, pants: look.pants }); };
   N.sendPos = function (dt, x, y, sc, hd, mv) { posT -= dt; if (posT > 0) return; posT = 0.15; N.send({ t: "pos", x: Math.round(x), y: Math.round(y), sc, hd: +hd.toFixed(2), mv }); };
   N.chat = (text) => N.send({ t: "chat", text });
   N.dm = (to, text) => N.send({ t: "dm", to, text });
