@@ -337,6 +337,10 @@
     if (keys.ArrowLeft || keys.a || keys.q) mx -= 1; if (keys.ArrowRight || keys.d) mx += 1;
     if (keys.ArrowUp || keys.w || keys.z) my -= 1; if (keys.ArrowDown || keys.s) my += 1;
     const yw = R3D.getYaw(), cy = Math.cos(yw), sy = Math.sin(yw); if (!scene) { const rx = mx * cy + my * sy, ry = -mx * sy + my * cy; mx = rx; my = ry; }
+    if (auto && !scene) {
+      if (Math.hypot(mx, my) > 0.1) cancelAuto();
+      else if (!busy) { const p = auto.pts[auto.i]; if (!p) cancelAuto(); else { const dx = p.x - S.x, dy = p.y - S.y, L = Math.hypot(dx, dy); if (L < 12) { auto.i++; if (auto.i >= auto.pts.length) cancelAuto(); } else { mx = dx / L; my = dy / L; } } }
+    }
     const m = Math.hypot(mx, my); pl.moving = false;
     if (!busy && m > 0.1) {
       const sp = (scene ? 110 : vehSpeed()) * (S.energy < 15 ? 0.7 : 1) * dt / Math.max(1, m);
@@ -444,7 +448,7 @@
   function frame(ts) {
     const dt = Math.min(0.05, (ts - last) / 1000); last = ts; update(dt); Net.tick(dt); Phone.tick(dt);
     if (S.started) { Net.sendPos(dt, scene ? ip.x : S.x, scene ? ip.y : S.y, scene ? scene.id : null, S.hd || 0, pl.moving); Sound.tick(dt, { walking: pl.moving, moto: S.moto, scene: !!scene, raining: raining > 0, night: darkness() > 0.5 }); }
-    if (S.dest && Math.hypot(S.dest.x - S.x, S.dest.y - S.y) < 70) { toast("📍 Arrivé : " + S.dest.name); S.dest = null; }
+    if (S.dest && Math.hypot(S.dest.x - S.x, S.dest.y - S.y) < 70) { toast("📍 Arrivé : " + S.dest.name); cancelAuto(); }
     R3D.render(dt); requestAnimationFrame(frame);
   }
   function netStart() { let url = SERVER_URL; try { url = localStorage.getItem("lvk-server") || url; } catch (e) {} Net.connect(url, S.name, netLook(), Auth.token()); }
@@ -454,6 +458,50 @@
   function taxiInfo(z) { const c = zoneCenter(z), d = Math.hypot(c.x - S.x, c.y - S.y); return { d, fare: Math.round(Math.max(1500, Math.round(d / 100) * 500) * (S.veh === "voiture" ? 0.25 : S.veh === "moto" ? 0.5 : 1) / 100) * 100, walk: Math.round(d / CFG.WALK) }; }
   function taxiList() { return ZONES.filter((z) => !ZSOON.includes(z.id)).map((z) => Object.assign({ z }, taxiInfo(z))); }
   // aller à un endroit précis du quartier (moto-taxi) ou poser un repère
+  // ---- déplacement automatique (comme Lagos Life) : chemin A* autour des bâtiments ----
+  let auto = null;
+  function cancelAuto() { auto = null; if (S.dest) S.dest = null; const c = document.getElementById("auto-x"); if (c) c.remove(); }
+  function planPath(tx, ty) {
+    const z = curZone(), C = 20, x0 = z.x - 100, y0 = z.y - 100, gw = Math.ceil((z.w + 200) / C), gh = Math.ceil((z.h + 200) / C);
+    const cx = (i) => x0 + i * C + C / 2, cy = (j) => y0 + j * C + C / 2, ok = new Uint8Array(gw * gh);
+    for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) ok[j * gw + i] = blocked(cx(i), cy(j)) ? 0 : 1;
+    const cell = (x, y) => [Math.max(0, Math.min(gw - 1, Math.floor((x - x0) / C))), Math.max(0, Math.min(gh - 1, Math.floor((y - y0) / C)))];
+    const near = (x, y) => { let [i, j] = cell(x, y); if (ok[j * gw + i]) return [i, j]; for (let r = 1; r < 12; r++) for (let a = -r; a <= r; a++) for (const [di, dj] of [[a, -r], [a, r], [-r, a], [r, a]]) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < gw && jj < gh && ok[jj * gw + ii]) return [ii, jj]; } return null; };
+    const s = near(S.x, S.y), e = near(tx, ty); if (!s || !e) return null;
+    const dist = new Float32Array(gw * gh).fill(1e9), prev = new Int32Array(gw * gh).fill(-1), open = [s[1] * gw + s[0]], done = new Uint8Array(gw * gh); dist[open[0]] = 0;
+    const hh = (n) => Math.hypot(n % gw - e[0], Math.floor(n / gw) - e[1]);
+    while (open.length) {
+      let bi = 0; for (let k = 1; k < open.length; k++) if (dist[open[k]] + hh(open[k]) < dist[open[bi]] + hh(open[bi])) bi = k;
+      const n = open.splice(bi, 1)[0]; if (done[n]) continue; done[n] = 1; if (n === e[1] * gw + e[0]) break;
+      const ni = n % gw, nj = Math.floor(n / gw);
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue; const ii = ni + di, jj = nj + dj; if (ii < 0 || jj < 0 || ii >= gw || jj >= gh) continue; const m = jj * gw + ii; if (!ok[m] || done[m]) continue;
+        if (di && dj && (!ok[nj * gw + ii] || !ok[jj * gw + ni])) continue;
+        const nd = dist[n] + (di && dj ? 1.42 : 1); if (nd < dist[m]) { dist[m] = nd; prev[m] = n; open.push(m); }
+      }
+    }
+    const goal = e[1] * gw + e[0]; if (prev[goal] < 0 && goal !== s[1] * gw + s[0]) return null;
+    let pts = []; for (let n = goal; n >= 0; n = prev[n]) pts.push({ x: cx(n % gw), y: cy(Math.floor(n / gw)) }); pts.reverse();
+    const clear = (a, b) => { const L = Math.hypot(b.x - a.x, b.y - a.y), st = Math.ceil(L / 8); for (let k = 1; k < st; k++) if (blocked(a.x + (b.x - a.x) * k / st, a.y + (b.y - a.y) * k / st)) return false; return true; };
+    const out = [], P0 = { x: S.x, y: S.y }; let a = P0, k = 0; while (k < pts.length) { let f = k; for (let q = pts.length - 1; q >= k; q--) if (clear(a, pts[q])) { f = q; break; } out.push(pts[f]); a = pts[f]; k = f + 1; }
+    let len = 0; a = P0; out.forEach((p) => { len += Math.hypot(p.x - a.x, p.y - a.y); a = p; });
+    return { pts: out, len };
+  }
+  function doorOf(b) { return { x: b.x + b.w / 2, y: b.y + b.h + 20 }; }
+  function tripInfo(b) {
+    const d = doorOf(b), p = zoneOf(S.x, S.y) === zoneOf(d.x, d.y) ? planPath(d.x, d.y) : null, len = p ? p.len : Math.hypot(d.x - S.x, d.y - S.y) * 1.2, f = fareTo(d.x, d.y);
+    const vs = VEHS.filter((v) => S.own.includes(v.id)).map((v) => Object.assign({ t: Math.round(len / v.speed) }, v));
+    return { len, walk: Math.round(len / CFG.WALK), veh: vs, fare: f.fare, taxi: Math.round(6 + len / 650), p };
+  }
+  function zoneOf(x, y) { const z = ZONES.find((q) => x >= q.x - 110 && x <= q.x + q.w + 110 && y >= q.y - 110 && y <= q.y + q.h + 110); return z ? z.id : ""; }
+  function startAuto(b, vehId) {
+    if (scene || ff) { toast("Sors d'abord du bâtiment."); return false; }
+    const d = doorOf(b), p = planPath(d.x, d.y); if (!p) { toast("Chemin introuvable."); return false; }
+    if (vehId !== undefined) useVeh(vehId);
+    S.dest = { id: b.id, name: b.name, x: d.x, y: d.y }; auto = { pts: p.pts, i: 0 };
+    if (!document.getElementById("auto-x")) { const c = document.createElement("button"); c.id = "auto-x"; c.textContent = "✕ Arrêter"; c.onclick = cancelAuto; document.body.appendChild(c); }
+    return true;
+  }
   function fareTo(x, y) { const d = Math.hypot(x - S.x, y - S.y); return { d, fare: Math.round(Math.max(500, Math.round(d / 100) * 150) * (S.veh === "voiture" ? 0.25 : S.veh === "moto" ? 0.5 : 1) / 50) * 50, walk: Math.round(d / vehSpeed()) }; }
   function goTo(b) {
     if (scene || ff) { toast("Sors d'abord du bâtiment."); return false; }
@@ -504,7 +552,7 @@
       b.jobs.forEach((id) => { const j = JOBS.find((q) => q.id === id); if (j && z) out.push({ j, b, z, locked: S.rep < j.rep }); }); });
     return out.sort((a, b) => a.j.pay - b.j.pay);
   }
-  window.G = { fareTo, goTo, setDest, avatarEditor, av, netLook, VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
+  window.G = { tripInfo, startAuto, cancelAuto, fareTo, goTo, setDest, avatarEditor, av, netLook, VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
     cars, npcs, boats, trees, lamps, darkness, nowH, fmt, hh, toast, save, lite: () => lite, setLite(b) { lite = b; try { localStorage.setItem("lvk-lite", b ? "1" : "0"); } catch (e) {} resize(); } };
   window.__lvk = { get S() { return S; }, BUILDINGS, enter, leave, onAct, setHour(h) { fakeHour = h; }, get scene() { return scene; }, get ff() { return ff; }, get ip() { return ip; }, doItem, get room() { return room; } };
   R3D.setZoom(1.45);
