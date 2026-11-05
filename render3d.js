@@ -387,6 +387,7 @@ const R3D = (function () {
     if (nearU(ucx, (us.y + us.h) / U, 70)) for (let c = 0; c < 2; c++) for (let k = 0; k < 4; k++) { const f = ((t * 0.5 + k * 0.25) % 1), x = ucx - us.w / U * 0.3 + c * 3.5 + f * 2, y = 0.2 + us.h / U * 0.95 + 1 + 3 + 3 + f * 5, z = (us.y + us.h / 2) / U - us.h / U * 0.2; B2.sphere(T(x, y, z), 0.6 + f * 1.4, 0.5 + f * 1.1, 0.6 + f * 1.4, 0xdddddd, 0, 0.5 * (1 - f), 7, 4); } }
     // lumières de nuit et repères
     if (night > 0.05) G.lamps.forEach((l) => { const x = l.x / U, z = l.y / U; if (!nearU(x, z, 45)) return; const h = groundY(l.x, l.y); B2.prism(T(x, h + 0.05, z), 14, 4.2, 4.2, 0.01, 0xffe9a0, 0, 0.1 * night); B2.prism(T(x, h + 0.06, z), 14, 2.4, 2.4, 0.01, 0xffe9a0, 0, 0.12 * night); });
+    if (S.dest && G.inZone(S.dest.x, S.dest.y, 0)) B.prism(T(S.dest.x / U, 0.2 + 6 + Math.sin(t * 5) * 0.4, S.dest.y / U), 4, 0.9, 0, 1.4, 0x42a5f5, 1);
     if (G.near) { const b = G.near, cx = (b.x + b.w / 2) / U, zf = (b.y + b.h) / U; B.prism(T(cx, 0.2 + 4.4 + Math.sin(t * 6) * 0.25, zf + 0.5), 4, 0.5, 0, 0.8, 0xf7c948, 1); }
   }
 
@@ -477,6 +478,7 @@ const R3D = (function () {
       const pp = proj(G.ip.x / U, 2.5, G.ip.y / U); if (pp) pill(S.name || "Moi", pp[0], pp[1], "rgba(247,201,72,.9)", "#111", 11);
     } else {
       BUILDINGS.forEach((b) => { if (!b.name || (b.needs && !S[b.needs]) || !G.inZone(b.x + b.w / 2, b.y + b.h / 2, 0)) return; const cx = (b.x + b.w / 2) / U, zf = (b.y + b.h) / U; if ((cx - tx) * (cx - tx) + (zf - tz) * (zf - tz) > 3600) return; const hgt = b.h >= 250 ? 4.4 : 4.6; const p = proj(cx, hgt, zf); if (p) pill((b.emoji ? b.emoji + " " : "") + b.name, p[0], p[1], "rgba(0,0,0,.72)", "#fff", Math.max(10, Math.min(14, 220 / p[2] * 0.9 + 6))); });
+      if (S.dest && G.inZone(S.dest.x, S.dest.y, 0)) { const dp = proj(S.dest.x / U, 7, S.dest.y / U); if (dp) pill("📍 " + S.dest.name + " · " + Math.round(Math.hypot(S.dest.x - S.x, S.dest.y - S.y) / 10) + " m", dp[0], dp[1], "rgba(66,165,245,.95)", "#fff", 12); }
       G.npcs.forEach((n) => { if (!n.say) return; const p = proj(n.x / U, groundY(n.x, n.y) + 2.5, n.y / U); if (p) pill(n.say, p[0], p[1], "#fff", "#111", 12); });
       const pp = proj(S.x / U, groundY(S.x, S.y) + 2.5, S.y / U); if (pp) pill(S.name || "Moi", pp[0], pp[1], "rgba(247,201,72,.9)", "#111", 11);
       if (window.Net) Object.values(Net.players).forEach((p) => { if (p.sc) return; const q = proj(p.x / U, groundY(p.x, p.y) + 2.5, p.y / U); if (q) { pill(p.name || "Joueur", q[0], q[1], "rgba(30,136,229,.9)", "#fff", 11); if (p.say) pill(p.say, q[0], q[1] - 22, "#fff", "#111", 12); } });
