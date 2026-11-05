@@ -341,6 +341,11 @@
       if (Math.hypot(mx, my) > 0.1) cancelAuto();
       else if (!busy) { const p = auto.pts[auto.i]; if (!p) cancelAuto(); else { const dx = p.x - S.x, dy = p.y - S.y, L = Math.hypot(dx, dy); if (L < 12) { auto.i++; if (auto.i >= auto.pts.length) cancelAuto(); } else { mx = dx / L; my = dy / L; } } }
     }
+    if (scene && rauto) {
+      rauto.t += dt;
+      if (Math.hypot(mx, my) > 0.1) rauto = null;
+      else if (!busy) { const dx = rauto.x - ip.x, dy = rauto.y - ip.y, L = Math.hypot(dx, dy); if (L < 9 || rauto.t > 6) { fireNext = !!rauto.fire; rauto = null; } else { mx = dx / L; my = dy / L; } }
+    }
     const m = Math.hypot(mx, my); pl.moving = false;
     if (!busy && m > 0.1) {
       const sp = (scene ? 110 : vehSpeed()) * (S.energy < 15 ? 0.7 : 1) * dt / Math.max(1, m);
@@ -374,6 +379,7 @@
       if (near) label = near.emoji + " " + T.enter;
     }
     const act = $("act"); act.hidden = !(label && !busy); if (label) act.textContent = label;
+    if (fireNext) { fireNext = false; if (nearItem && !busy) onAct(); }
     if (!scene) { const z = ZONES.find((q) => inRect(S.x, S.y, q)); const zn = z ? z.name : ""; if (zn && zn !== lastZone) { lastZone = zn; toast("📍 " + zn); if (!S.stats.zones.includes(zn)) S.stats.zones.push(zn); } }
     saveT += dt; if (saveT > 4) { saveT = 0; save(); }
     hudT += dt; if (hudT > 0.15) { hudT = 0; hud(); checkMissions(); checkDate(); }
@@ -435,6 +441,25 @@
     if (drag && e.target === gc) { R3D.addYaw(-(e.clientX - drag.x) * 0.008); drag.x = e.clientX; } ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
   });
   ["pointerup", "pointercancel"].forEach((n) => window.addEventListener(n, (e) => { ptr.delete(e.pointerId); if (!ptr.size) drag = null; }));
+  const U = 20; // 20 pixels de la carte = 1 unité 3D (comme dans render3d.js)
+  // toucher le sol (ou un meuble) : le personnage y va tout seul
+  let tap0 = null;
+  gc.addEventListener("pointerdown", (e) => { tap0 = ptr.size === 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+  gc.addEventListener("pointerup", (e) => {
+    const t0 = tap0; tap0 = null; if (!t0 || !S.started || ff || !$("modal").hidden || Math.hypot(e.clientX - t0.x, e.clientY - t0.y) > 12 || performance.now() - t0.t > 450) return;
+    const r = gc.getBoundingClientRect();
+    if (scene) {
+      const p = R3D.unproject(e.clientX - r.left, e.clientY - r.top, 0); if (!p) return; const x = p.x * U, y = p.z * U;
+      const it = room.items.find((s) => s.act && x > s.x - 14 && x < s.x + s.w + 14 && y > s.y - 14 && y < s.y + s.h + 14);
+      if (it) rauto = { x: it.x + it.w / 2, y: it.y + it.h + 14, fire: true, t: 0 };
+      else if (y > ROOM.h - 60 && Math.abs(x - 240) < 90) rauto = { x: 240, y: ROOM.h - 40, fire: true, t: 0 };
+      else if (!blockedIn(x, y)) rauto = { x, y, fire: false, t: 0 };
+      return;
+    }
+    const p = R3D.unproject(e.clientX - r.left, e.clientY - r.top, 0.2); if (!p) return;
+    const pa = planPath(p.x * U, p.z * U); if (!pa) return; cancelAuto(); auto = { pts: pa.pts, i: 0 }; const last = pa.pts[pa.pts.length - 1] || { x: S.x, y: S.y }; S.dest = { id: "tap", name: "Ici", x: last.x, y: last.y };
+    if (!document.getElementById("auto-x")) { const c = document.createElement("button"); c.id = "auto-x"; c.textContent = "✕ Arrêter"; c.onclick = cancelAuto; document.body.appendChild(c); }
+  });
   gc.addEventListener("wheel", (e) => { R3D.setZoom(R3D.getZoom() + e.deltaY * 0.001); }, { passive: true });
   $("snd").addEventListener("click", () => { const on = !(Sound.set.sfx || Sound.set.music); Sound.setSfx(on); Sound.setMusic(on); $("snd").textContent = on ? "🔊" : "🔇"; });
   $("m-close").addEventListener("click", closeModal);
@@ -459,7 +484,7 @@
   function taxiList() { return ZONES.filter((z) => !ZSOON.includes(z.id)).map((z) => Object.assign({ z }, taxiInfo(z))); }
   // aller à un endroit précis du quartier (moto-taxi) ou poser un repère
   // ---- déplacement automatique (comme Lagos Life) : chemin A* autour des bâtiments ----
-  let auto = null;
+  let auto = null, rauto = null, fireNext = false;
   function cancelAuto() { auto = null; if (S.dest) S.dest = null; const c = document.getElementById("auto-x"); if (c) c.remove(); }
   function planPath(tx, ty) {
     const z = curZone(), C = 20, x0 = z.x - 100, y0 = z.y - 100, gw = Math.ceil((z.w + 200) / C), gh = Math.ceil((z.h + 200) / C);
