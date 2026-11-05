@@ -21,8 +21,9 @@
     let sheet = "";
     if (sel) {
       const t = G.fareTo(sel.x + sel.w / 2, sel.y + sel.h + 30);
-      sheet = '<div class="wm-sheet"><h3>' + sel.emoji + " " + esc(sel.name) + "</h3><p>" + (sel.jobs ? "💼 Emplois sur place · " : sel.kind === "shop" ? "🛒 Boutique · " : "") + "à environ " + Math.round(t.d / 10) + " m · " + t.walk + " s à pied</p>" +
-        (zid === cur ? '<div class="wm-act"><button id="wm-walk">🚶 Y aller à pied</button><button id="wm-taxi">🏍️ Moto-taxi · ' + fmt(t.fare) + "</button></div>" : '<div class="wm-act"><button id="wm-tz">🚕 Taxi vers ' + esc(z.name) + "</button></div>") + "</div>";
+      const tr = G.tripInfo(sel), tm = (s) => s < 60 ? s + " s" : Math.floor(s / 60) + " min" + (s % 60 > 4 ? " " + (s % 60) + " s" : "");
+      sheet = '<div class="wm-sheet"><h3>' + sel.emoji + " " + esc(sel.name) + "</h3><p>" + (sel.jobs ? "💼 Emplois sur place · " : sel.kind === "shop" ? "🛒 Boutique · " : "") + "à environ " + Math.round(tr.len / 10) + " m</p>" +
+        (zid === cur ? '<div class="wm-opts"><button id="wm-walk"><b>🚶 À pied</b><span>' + tm(tr.walk) + "</span></button>" + tr.veh.map((v) => '<button data-veh="' + v.id + '"><b>' + v.emoji + " " + v.name + "</b><span>" + tm(v.t) + "</span></button>").join("") + '<button id="wm-taxi"><b>🚕 Taxi</b><span>' + tm(tr.taxi) + " · " + fmt(tr.fare) + "</span></button></div>" : '<div class="wm-act"><button id="wm-tz">🚕 Taxi vers ' + esc(z.name) + "</button></div>") + "</div>";
     } else if (zid !== cur) {
       const t = G.taxiList().find((q) => q.z.id === zid);
       sheet = '<div class="wm-sheet"><h3>' + esc(z.name) + "</h3>" + (soon(zid) ? "<p>🔒 Bientôt disponible.</p>" : "<p>" + (t ? "Taxi : " + fmt(t.fare) + " · à pied : " + Math.round(t.walk / 60) + " min" : "") + '</p><div class="wm-act"><button id="wm-tz">🚕 Y aller en taxi</button></div>') + "</div>";
@@ -31,7 +32,7 @@
     $("wm-close").onclick = close;
     ov.querySelectorAll("[data-z]").forEach((b) => b.onclick = () => { zid = b.dataset.z; paint(null); });
     ov.querySelectorAll("button[data-b]").forEach((b) => b.onclick = () => paint(BUILDINGS.find((q) => q.id === b.dataset.b)));
-    if (sel && $("wm-walk")) { $("wm-walk").onclick = () => { G.setDest(sel); close(); }; $("wm-taxi").onclick = () => { if (G.goTo(sel)) close(); }; }
+    if (sel && $("wm-walk")) { $("wm-walk").onclick = () => { if (G.startAuto(sel, "")) close(); }; $("wm-taxi").onclick = () => { if (G.goTo(sel)) close(); }; ov.querySelectorAll("[data-veh]").forEach((b) => b.onclick = () => { if (G.startAuto(sel, b.dataset.veh)) close(); }); }
     if ($("wm-tz")) $("wm-tz").onclick = () => { if (soon(zid)) return; if (G.travel(zid)) close(); };
   }
   document.addEventListener("click", (e) => { if (e.target.closest("#map-btn")) open(); });
