@@ -348,6 +348,20 @@ const R3D = (function () {
     gl.uniform3fv(L.uFog, indoors ? [0.09, 0.07, 0.06] : sky); gl.uniform1f(L.uFogN, indoors ? 400 : 60); gl.uniform1f(L.uFogF, indoors ? 500 : 190);
     gl.uniform1f(L.uEmis, indoors ? 0.7 : Math.max(0, Math.min(1, (dk - 0.25) / 0.5)));
   }
+  function inv4(m) {
+    const o = new Float64Array(16), a = m, b00 = a[0] * a[5] - a[1] * a[4], b01 = a[0] * a[6] - a[2] * a[4], b02 = a[0] * a[7] - a[3] * a[4], b03 = a[1] * a[6] - a[2] * a[5], b04 = a[1] * a[7] - a[3] * a[5], b05 = a[2] * a[7] - a[3] * a[6], b06 = a[8] * a[13] - a[9] * a[12], b07 = a[8] * a[14] - a[10] * a[12], b08 = a[8] * a[15] - a[11] * a[12], b09 = a[9] * a[14] - a[10] * a[13], b10 = a[9] * a[15] - a[11] * a[13], b11 = a[10] * a[15] - a[11] * a[14];
+    let d = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06; if (!d) return null; d = 1 / d;
+    o[0] = (a[5] * b11 - a[6] * b10 + a[7] * b09) * d; o[1] = (a[2] * b10 - a[1] * b11 - a[3] * b09) * d; o[2] = (a[13] * b05 - a[14] * b04 + a[15] * b03) * d; o[3] = (a[10] * b04 - a[9] * b05 - a[11] * b03) * d;
+    o[4] = (a[6] * b08 - a[4] * b11 - a[7] * b07) * d; o[5] = (a[0] * b11 - a[2] * b08 + a[3] * b07) * d; o[6] = (a[14] * b02 - a[12] * b05 - a[15] * b01) * d; o[7] = (a[8] * b05 - a[10] * b02 + a[11] * b01) * d;
+    o[8] = (a[4] * b10 - a[5] * b08 + a[7] * b06) * d; o[9] = (a[1] * b08 - a[0] * b10 - a[3] * b06) * d; o[10] = (a[12] * b04 - a[13] * b02 + a[15] * b00) * d; o[11] = (a[9] * b02 - a[8] * b04 - a[11] * b00) * d;
+    o[12] = (a[5] * b07 - a[4] * b09 - a[6] * b06) * d; o[13] = (a[0] * b09 - a[1] * b07 + a[2] * b06) * d; o[14] = (a[13] * b01 - a[12] * b03 - a[14] * b00) * d; o[15] = (a[8] * b03 - a[9] * b01 + a[10] * b00) * d; return o;
+  }
+  // point touché à l'écran -> position sur le sol (unités du monde)
+  function unproject(sx, sy, py) {
+    const iv = inv4(vp); if (!iv) return null; const nx = sx / W * 2 - 1, ny = 1 - sy / H * 2;
+    const f = (z) => { const x = iv[0] * nx + iv[4] * ny + iv[8] * z + iv[12], y = iv[1] * nx + iv[5] * ny + iv[9] * z + iv[13], zz = iv[2] * nx + iv[6] * ny + iv[10] * z + iv[14], w = iv[3] * nx + iv[7] * ny + iv[11] * z + iv[15]; return [x / w, y / w, zz / w]; };
+    const a = f(-1), b = f(1), t = (py - a[1]) / (b[1] - a[1]); if (!isFinite(t)) return null; return { x: a[0] + (b[0] - a[0]) * t, z: a[2] + (b[2] - a[2]) * t };
+  }
   function proj(x, y, z) {
     const w = vp[3] * x + vp[7] * y + vp[11] * z + vp[15]; if (w <= 0.1) return null;
     return [((vp[0] * x + vp[4] * y + vp[8] * z + vp[12]) / w * 0.5 + 0.5) * W, (1 - ((vp[1] * x + vp[5] * y + vp[9] * z + vp[13]) / w * 0.5 + 0.5)) * H, w];
@@ -487,5 +501,5 @@ const R3D = (function () {
       if (G.raining > 0) { oc.strokeStyle = "rgba(190,210,255,.55)"; oc.lineWidth = 1.2; oc.beginPath(); for (let i = 0; i < 130; i++) { const x = ((i * 97 + G.time * 220) % (W + 40)) - 20, y = (i * 61 + G.time * 700) % H; oc.moveTo(x, y); oc.lineTo(x - 4, y + 14); } oc.stroke(); }
     }
   }
-  return { refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setPreview(on) { out.pv = on ? { yaw: Math.PI, ty: 1.2, d: 3, face: true, drag: false } : null; }, get pv() { return out.pv; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(2.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
+  return { unproject, refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setPreview(on) { out.pv = on ? { yaw: Math.PI, ty: 1.2, d: 3, face: true, drag: false } : null; }, get pv() { return out.pv; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(2.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
 })();
