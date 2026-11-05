@@ -66,7 +66,7 @@ const Phone = (function () {
       h = '<div class="card big">' + G.fmt(s.money) + "</div>" + G.VEHS.map((v) => { const own = s.own.includes(v.id); return '<div class="tx"><span><b>' + v.emoji + " " + v.name + "</b><br><small>" + v.desc + "</small></span>" + (own ? (s.veh === v.id ? "<em>✅ utilisé</em>" : '<button class="taxi" data-use="' + v.id + '">Utiliser</button>') : '<button class="taxi" data-buyv="' + v.id + '">' + G.fmt(v.price) + "</button>") + "</div>"; }).join("") + (s.veh ? '<div class="tx"><span>🚶 Marcher à pied</span><button class="taxi" data-use="">Utiliser</button></div>' : "");
     } else if (app === "house") {
       h = '<div class="card big">' + (s.ownHome ? "🏠 Propriétaire" : "🏠 Locataire") + "</div>" + (s.ownHome ? '<p class="hint">Ta maison est à toi, tu ne paies plus de loyer. Félicitations !</p>' : '<div class="tx"><span><b>Loyer</b><br><small>14 000 FC tous les 7 jours · prochain : jour ' + s.nextRent + '</small></span></div><div class="tx"><span><b>Acheter ta maison</b><br><small>Plus de loyer, pour toujours.</small></span><button class="taxi" data-house="1">' + G.fmt(G.HOUSE_PRICE) + "</button></div>");
-    } else if (app === "map") h = '<canvas id="ph-map" width="340" height="400"></canvas><p class="hint">🟡 toi · 🔵 autres joueurs</p><h4>🚕 Taxi (ou marche à pied)</h4>' + G.taxiList().map((t) => '<div class="tx"><span>' + esc(t.z.name) + '<br><small>🚶 ' + (t.walk > 60 ? Math.round(t.walk / 60) + " min" : t.walk + " s") + '</small></span><button class="taxi" data-z="' + t.z.id + '">' + (t.d < 300 ? "ici" : G.fmt(t.fare)) + '</button></div>').join("");
+    } else if (app === "map") h = '<button id="ph-bigmap" style="width:100%;margin-bottom:10px">🗺️ Ouvrir la grande carte</button><canvas id="ph-map" width="340" height="400"></canvas><p class="hint">🟡 toi · 🔵 autres joueurs</p><h4>🚕 Taxi (ou marche à pied)</h4>' + G.taxiList().map((t) => '<div class="tx"><span>' + esc(t.z.name) + '<br><small>🚶 ' + (t.walk > 60 ? Math.round(t.walk / 60) + " min" : t.walk + " s") + '</small></span><button class="taxi" data-z="' + t.z.id + '">' + (t.d < 300 ? "ici" : G.fmt(t.fare)) + '</button></div>').join("");
     else if (app === "set") {
       const st = Sound.set;
       h = '<label class="sw"><input type="checkbox" id="s-sfx" ' + (st.sfx ? "checked" : "") + '> Sons</label><label class="sw"><input type="checkbox" id="s-mus" ' + (st.music ? "checked" : "") + '> Musique</label><label class="sw">Volume <input type="range" id="s-vol" min="0" max="1" step="0.05" value="' + st.vol + '"></label>' +
@@ -74,7 +74,7 @@ const Phone = (function () {
     }
     body.innerHTML = h;
     const ms = $("ph-msgs"); if (ms) ms.scrollTop = ms.scrollHeight;
-    if (app === "map") { drawMap(); document.querySelectorAll("button.taxi").forEach((b) => b.onclick = () => { if (G.travel(b.dataset.z)) toggle(false); }); }
+    if (app === "map") { $("ph-bigmap").onclick = () => { toggle(false); WorldMap.open(); }; drawMap(); document.querySelectorAll("button.taxi").forEach((b) => b.onclick = () => { if (G.travel(b.dataset.z)) toggle(false); }); }
   }
   function drawMap() {
     const c = $("ph-map").getContext("2d"), k = 340 / WORLD.w, k2 = 400 / WORLD.h; c.fillStyle = "#3b3e43"; c.fillRect(0, 0, 340, 400);
