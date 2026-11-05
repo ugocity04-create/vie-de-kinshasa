@@ -444,6 +444,7 @@
   function frame(ts) {
     const dt = Math.min(0.05, (ts - last) / 1000); last = ts; update(dt); Net.tick(dt); Phone.tick(dt);
     if (S.started) { Net.sendPos(dt, scene ? ip.x : S.x, scene ? ip.y : S.y, scene ? scene.id : null, S.hd || 0, pl.moving); Sound.tick(dt, { walking: pl.moving, moto: S.moto, scene: !!scene, raining: raining > 0, night: darkness() > 0.5 }); }
+    if (S.dest && Math.hypot(S.dest.x - S.x, S.dest.y - S.y) < 70) { toast("📍 Arrivé : " + S.dest.name); S.dest = null; }
     R3D.render(dt); requestAnimationFrame(frame);
   }
   function netStart() { let url = SERVER_URL; try { url = localStorage.getItem("lvk-server") || url; } catch (e) {} Net.connect(url, S.name, netLook(), Auth.token()); }
@@ -452,6 +453,17 @@
   function zoneCenter(z) { return { x: z.x + z.w / 2, y: z.y + z.h / 2 }; }
   function taxiInfo(z) { const c = zoneCenter(z), d = Math.hypot(c.x - S.x, c.y - S.y); return { d, fare: Math.round(Math.max(1500, Math.round(d / 100) * 500) * (S.veh === "voiture" ? 0.25 : S.veh === "moto" ? 0.5 : 1) / 100) * 100, walk: Math.round(d / CFG.WALK) }; }
   function taxiList() { return ZONES.filter((z) => !ZSOON.includes(z.id)).map((z) => Object.assign({ z }, taxiInfo(z))); }
+  // aller à un endroit précis du quartier (moto-taxi) ou poser un repère
+  function fareTo(x, y) { const d = Math.hypot(x - S.x, y - S.y); return { d, fare: Math.round(Math.max(500, Math.round(d / 100) * 150) * (S.veh === "voiture" ? 0.25 : S.veh === "moto" ? 0.5 : 1) / 50) * 50, walk: Math.round(d / vehSpeed()) }; }
+  function goTo(b) {
+    if (scene || ff) { toast("Sors d'abord du bâtiment."); return false; }
+    const t = fareTo(b.x + b.w / 2, b.y + b.h + 30); if (t.d < 120) { toast("Tu es déjà là."); return false; }
+    if (S.money < t.fare) { toast("Pas assez d'argent (" + fmt(t.fare) + ")."); return false; }
+    money(-t.fare, "Moto-taxi vers " + b.name); Sound.play("door"); S.dest = null;
+    let ok = false; for (let r = 0; r < 300 && !ok; r += 15) for (let a = 0; a < 6.28 && !ok; a += 0.5) { const x = b.x + b.w / 2 + Math.cos(a) * r, y = b.y + b.h + 30 + Math.sin(a) * r; if (!blocked(x, y)) { S.x = x; S.y = y; ok = true; } }
+    S.energy -= 1; stats(); save(); toast("📍 " + b.name); return true;
+  }
+  function setDest(b) { S.dest = b ? { id: b.id, name: b.name, x: b.x + b.w / 2, y: b.y + b.h + 20 } : null; if (b) toast("📍 Repère posé : " + b.name); save(); }
   function travel(id) {
     if (scene || ff) { toast("Sors d'abord du bâtiment."); return false; }
     const z = ZONES.find((q) => q.id === id), t = taxiInfo(z);
@@ -492,7 +504,7 @@
       b.jobs.forEach((id) => { const j = JOBS.find((q) => q.id === id); if (j && z) out.push({ j, b, z, locked: S.rep < j.rep }); }); });
     return out.sort((a, b) => a.j.pay - b.j.pay);
   }
-  window.G = { avatarEditor, av, netLook, VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
+  window.G = { fareTo, goTo, setDest, avatarEditor, av, netLook, VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
     cars, npcs, boats, trees, lamps, darkness, nowH, fmt, hh, toast, save, lite: () => lite, setLite(b) { lite = b; try { localStorage.setItem("lvk-lite", b ? "1" : "0"); } catch (e) {} resize(); } };
   window.__lvk = { get S() { return S; }, BUILDINGS, enter, leave, onAct, setHour(h) { fakeHour = h; }, get scene() { return scene; }, get ff() { return ff; }, get ip() { return ip; }, doItem, get room() { return room; } };
   R3D.setZoom(1.45);
