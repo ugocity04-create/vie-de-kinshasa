@@ -425,6 +425,14 @@ const R3D = (function () {
       case "machine": at(0, 1.1, 0, w, 2.2, d, 0x78909c); at(0, 0.8, d / 2 + 0.02, w - 0.4, 0.5, 0.05, 0x37474f); for (let i = 0; i < 4; i++) at(-w / 2 + 0.7 + i * 0.8, 1.9, d / 2 + 0.05, 0.25, 0.25, 0.1, ((Math.floor(t * 2) + i) % 2) ? 0x66bb6a : 0xef5350, 1); break;
       case "cabinet": at(0, 1.2, 0, w, 2.4, d, 0x90a4ae); for (let i = 0; i < 3; i++) at(0, 0.5 + i * 0.75, d / 2 + 0.02, w - 0.2, 0.6, 0.05, 0x607d8b); break;
       case "car": car(B, cx, 0, cz, 0, 0, "car", C(0xc62828)); break;
+      case "chair": at(0, 0.45, 0, w * 0.9, 0.12, d * 0.9, 0xa1744b); at(0, 1.0, -d * 0.4, w * 0.9, 1.0, 0.12, 0x8d6e4a); for (const sx of [-1, 1]) for (const sz of [-1, 1]) at(sx * w * 0.4, 0.2, sz * d * 0.4, 0.1, 0.4, 0.1, 0x6d4c2f); break;
+      case "lamp": at(0, 0.1, 0, 0.9, 0.2, 0.9, 0x37474f); at(0, 1.1, 0, 0.12, 2.0, 0.12, 0x37474f); at(0, 2.2, 0, 0.9, 0.7, 0.9, 0xfff2c4, 0.8); break;
+      case "radio": at(0, 0.35, 0, w, 0.7, d, 0x5d4037); at(-w * 0.18, 0.37, d / 2 + 0.02, w * 0.4, 0.4, 0.04, 0x212121); at(w * 0.25, 0.4, d / 2 + 0.02, 0.2, 0.2, 0.04, 0xf7c948); break;
+      case "pouf": B.prism(T(cx, 0.4, cz), 10, w * 0.5, w * 0.5, 0.8, 0x8e5a3a); break;
+      case "stove": at(0, 0.6, 0, w, 1.2, d, 0xb0bec5); for (const sx of [-1, 1]) for (const sz of [-1, 1]) at(sx * w * 0.22, 1.25, sz * d * 0.22, 0.5, 0.06, 0.5, 0x263238); at(0, 0.6, d / 2 + 0.02, w - 0.3, 0.6, 0.05, 0x37474f); break;
+      case "wardrobe": at(0, 1.5, 0, w, 3.0, d, 0x7b5a3a); at(-0.05, 1.5, d / 2 + 0.02, 0.06, 2.6, 0.04, 0x4e342e); at(-0.5, 1.5, d / 2 + 0.05, 0.12, 0.5, 0.06, 0xf7c948); at(0.5, 1.5, d / 2 + 0.05, 0.12, 0.5, 0.06, 0xf7c948); break;
+      case "aquarium": at(0, 0.5, 0, w, 1.0, d, 0x5d4037); at(0, 1.55, 0, w - 0.3, 1.1, d - 0.3, 0x81d4fa, 0.5); for (let i = 0; i < 3; i++) B.sphere(T(cx - w * 0.25 + i * w * 0.25 + Math.sin(t + i) * 0.2, 1.6 + Math.sin(t * 2 + i) * 0.15, cz), 0.25, 0.14, 0.12, 0xff7043, 0, 1, 5, 3); break;
+      case "piano": at(0, 0.9, 0, w, 1.8, d * 0.8, 0x1b1b1b); at(0, 1.85, 0, w, 0.12, d * 0.85, 0x111111); at(0, 1.2, d * 0.42, w - 0.3, 0.12, 0.5, 0xffffff); for (let i = 0; i < 8; i++) at(-w / 2 + 0.8 + i * (w - 1.6) / 7, 1.3, d * 0.43, 0.15, 0.1, 0.4, 0x111111); break;
       case "fishtable": at(0, 0.9, 0, w, 0.18, d, 0x4f7f8f); for (const sx of [-1, 1]) at(sx * (w / 2 - 0.2), 0.45, 0, 0.2, 0.9, d - 0.3, 0x37474f); for (let i = 0; i < 5; i++) B.sphere(T(cx - w / 2 + 0.8 + i * 1.3, 1.1, cz + (i % 2) * 0.3), 0.5, 0.12, 0.2, 0xcfd8dc, 0, 1, 6, 3); break;
     }
   }
@@ -432,14 +440,15 @@ const R3D = (function () {
     const b = G.scene, R = G.room, B = DB, ip = G.ip, night = dk > 0.5;
     B.flat(12, 0, 15.4, 26, 22, 0x17120e); B.flat(12, 0.01, 15.4, 24, 21.2, R.floor);
     for (let x = 3; x < 24; x += 3) B.flat(x, 0.02, 15.4, 0.05, 21.2, 0xb8a888, 0.6); for (let z = 6.6; z < 26; z += 3) B.flat(12, 0.02, z, 24, 0.05, 0xb8a888, 0.6);
-    B.at(12, 2.4, 4.6, 24, 4.8, 0.4, b.wall); B.at(12, 0.25, 4.85, 24, 0.5, 0.15, 0x8d6e4a);
+    const WC = b.kind === "home" && G.room.wall ? G.room.wall : b.wall; B.at(12, 2.4, 4.6, 24, 4.8, 0.4, WC); B.at(12, 0.25, 4.85, 24, 0.5, 0.15, 0x8d6e4a);
     for (const wx of [5.2, 18.8]) { B.at(wx, 3.1, 4.82, 4.2, 2.7, 0.1, 0x5d4037); B.at(wx, 3.1, 4.9, 3.8, 2.3, 0.06, night ? 0x16224a : 0xbfe3f5); B.at(wx, 3.1, 4.96, 0.15, 2.3, 0.06, 0x5d4037); if (night) B.at(wx + 0.8, 3.5, 4.96, 0.6, 0.6, 0.04, 0xfff6c0, 1); }
-    B.at(-0.2, 1.2, 15.4, 0.4, 2.4, 21.2, b.wall); B.at(24.2, 1.2, 15.4, 0.4, 2.4, 21.2, b.wall);
-    B.at(5, 0.5, 26.2, 10, 1, 0.4, b.wall); B.at(19, 0.5, 26.2, 10, 1, 0.4, b.wall); B.flat(12, 0.03, 25.4, 4, 1.4, 0x4a3320); B.at(12, 2.2, 26.4, 4.4, 0.25, 0.3, 0x5d4037);
+    B.at(-0.2, 1.2, 15.4, 0.4, 2.4, 21.2, WC); B.at(24.2, 1.2, 15.4, 0.4, 2.4, 21.2, WC);
+    B.at(5, 0.5, 26.2, 10, 1, 0.4, WC); B.at(19, 0.5, 26.2, 10, 1, 0.4, WC); B.flat(12, 0.03, 25.4, 4, 1.4, 0x4a3320); B.at(12, 2.2, 26.4, 4.4, 0.25, 0.3, 0x5d4037);
     R.items.forEach((it) => item3D(B, it, t));
     const px = ip.x / U, pz = ip.y / U;
     person(B, px, 0.02, pz, G.S.hd || 0, { skin: C(G.av().skin), shirt: C(G.av().shirt), pants: C(G.av().pants), hair: C(G.av().hair), ph: t * 11, mv: G.pl.moving });
     TB.prism(T(px, 0.03, pz), 8, 0.45, 0.45, 0.01, 0, 0, 0.3);
+    if (G.sel) TB.flat((G.sel.x + G.sel.w / 2) / U, 0.08, (G.sel.y + G.sel.h / 2) / U, G.sel.w / U + 0.8, G.sel.h / U + 0.8, 0x4fc3f7, 0.45 + 0.15 * Math.sin(t * 7));
     const ni = G.nearItem;
     if (ni && ni !== "door") TB.flat((ni.x + ni.w / 2) / U, 0.07, (ni.y + ni.h / 2) / U, ni.w / U + 1, ni.h / U + 1, 0xf7c948, 0.3 + 0.15 * Math.sin(t * 6));
     if (ni === "door") B.prism(T(12, 1.6 + Math.sin(t * 6) * 0.2, 24.6), 4, 0.5, 0, 0.8, 0xf7c948, 1);
@@ -467,8 +476,26 @@ const R3D = (function () {
     upload(trBuf, TB, gl.DYNAMIC_DRAW); draw(trBuf, TB.n);
     gl.depthMask(true); gl.disable(gl.BLEND); oc.setTransform(dpr, 0, 0, dpr, 0, 0); oc.clearRect(0, 0, W, H);
   }
+  // ---------- grande carte : toute la ville vue d'en haut ----------
+  function renderMap(dt) {
+    const M = out.map, asp = W / H, pitch = 1.1, vh0 = 2 * M.d * Math.tan(0.425);
+    const eye = [M.x, M.d * Math.sin(pitch), M.z + M.d * Math.cos(pitch)];
+    vp = mulN(persp(0.85, asp, 0.5, 400), lookAt(eye, [M.x, 0, M.z], [0, 1, 0])); cam = eye;
+    const sea = [0.27, 0.58, 0.82]; gl.clearColor(sea[0], sea[1], sea[2], 1); gl.useProgram(prog);
+    gl.uniformMatrix4fv(L.uVP, false, vp); gl.uniform3fv(L.uCam, eye);
+    gl.uniform3f(L.uSunDir, 0.3, 0.8, 0.45); gl.uniform3fv(L.uSunCol, [0.45, 0.43, 0.38]); gl.uniform3fv(L.uAmb, [0.52, 0.52, 0.56]); gl.uniform3fv(L.uGnd, [0.4, 0.4, 0.42]);
+    gl.uniform3fv(L.uFog, sea); gl.uniform1f(L.uFogN, 600); gl.uniform1f(L.uFogF, 900);
+    pi = 0; DB.clear(); TB.clear();
+    const P = 60;
+    ZONES.forEach((z) => { DB.at((z.x + z.w / 2) / U, -0.15, (z.y + z.h / 2) / U, (z.w + 2 * P) / U, 0.3, (z.h + 2 * P) / U, z.ground); });
+    ROADS.h.forEach((r) => DB.at(WORLD.w / 2 / U, 0.02, (r.y + r.h / 2) / U, WORLD.w / U, 0.12, (r.h - 40) / U, "#6a727b")); ROADS.v.forEach((r) => DB.at((r.x + r.w / 2) / U, 0.03, WORLD.h / 2 / U, (r.w - 40) / U, 0.12, WORLD.h / U, "#6a727b"));
+    BUILDINGS.forEach((b, i) => { if (b.needs && !G.S[b.needs]) return; const h = 1.6 + (i * 7 % 4) * 0.9, w = b.w / U, d = b.h / U, cx = (b.x + b.w / 2) / U, cz = (b.y + b.h / 2) / U; DB.at(cx, h / 2, cz, w, h, d, b.wall || "#ccc"); DB.at(cx, h + 0.1, cz, w + 0.2, 0.25, d + 0.2, b.roof || "#888"); });
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.disable(gl.BLEND); gl.depthMask(true);
+    upload(dynBuf, DB, gl.DYNAMIC_DRAW); draw(dynBuf, DB.n); oc.setTransform(dpr, 0, 0, dpr, 0, 0); oc.clearRect(0, 0, W, H);
+  }
   function render(dt) {
     if (lost) return;
+    if (out.map) { renderMap(dt); return; }
     if (out.pv) { renderPreview(dt); return; }
     if (!built || builtZone !== G.curZone().id) buildStatic();
     pi = 0; skinN = 0; DB.clear(); TB.clear();
@@ -501,5 +528,5 @@ const R3D = (function () {
       if (G.raining > 0) { oc.strokeStyle = "rgba(190,210,255,.55)"; oc.lineWidth = 1.2; oc.beginPath(); for (let i = 0; i < 130; i++) { const x = ((i * 97 + G.time * 220) % (W + 40)) - 20, y = (i * 61 + G.time * 700) % H; oc.moveTo(x, y); oc.lineTo(x - 4, y + 14); } oc.stroke(); }
     }
   }
-  return { unproject, refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setPreview(on) { out.pv = on ? { yaw: Math.PI, ty: 1.2, d: 3, face: true, drag: false } : null; }, get pv() { return out.pv; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(2.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
+  return { unproject, proj: (x, y, z) => proj(x, y, z), setMap(m) { out.map = m || null; }, refresh() { builtZone = ""; }, init, resize, render, yaw: 0, zoom: 1, get out() { return out; }, setYaw(v) { out.yaw = v; }, addYaw(v) { out.yaw += v; }, getYaw() { return out.yaw; }, setPreview(on) { out.pv = on ? { yaw: Math.PI, ty: 1.2, d: 3, face: true, drag: false } : null; }, get pv() { return out.pv; }, setZoom(v) { out.zoom = Math.max(0.55, Math.min(2.8, v)); }, getZoom() { return out.zoom; }, stats() { return { staticVerts: staticN, dynVerts: DB.n, trVerts: TB.n }; } };
 })();
