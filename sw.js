@@ -1,5 +1,5 @@
 // Permet de jouer sans internet après la première visite.
-const C = "lvk-v16";
+const C = "lvk-v17";
 const FILES = ["./", "index.html", "styles.css", "game.js", "manifest.json", "data/fr.js", "data/world.js", "data/jobs.js", "data/events.js", "data/shop.js", "data/missions.js", "data/config.js", "audio.js", "net.js", "render3d.js", "phone.js", "data/interiors.js"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(C).then((c) => c.addAll(FILES))));
 self.addEventListener("activate", (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== C).map((k) => caches.delete(k))))));
