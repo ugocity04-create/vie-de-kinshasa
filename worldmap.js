@@ -1,39 +1,44 @@
-// GRANDE CARTE (comme Lagos Life) : le quartier vu d'en haut, avec une bulle pour chaque endroit.
+// GRANDE CARTE (comme Lagos Life) : toute la ville vue d'en haut, une bulle par endroit.
 (function () {
-  let ov = null, zid = null;
-  const $ = (id) => document.getElementById(id), esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const U = 20; let ov = null, M = null, raf = 0, bub = [], moved = false;
+  const $ = (id) => document.getElementById(id);
   const fmt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " FC";
-  const SHOW = (b) => b.name && (!b.needs || G.S[b.needs]);
   function open() {
-    if (ov) return; const S = G.S; if (!S || !S.started) return; zid = G.curZone().id; ov = document.createElement("div"); ov.id = "wmap"; document.body.appendChild(ov); document.body.classList.add("wmapmode"); paint(null);
+    if (ov) return; const S = G.S; if (!S || !S.started) return;
+    M = { x: 60, z: 62, d: 95 }; R3D.setMap(M); document.body.classList.add("wmapmode");
+    ov = document.createElement("div"); ov.id = "wmap";
+    ov.innerHTML = '<div class="wm-top"><button class="wm-x" id="wm-close">✕</button><div class="wm-money" id="wm-money"></div></div><div id="wm-layer"></div><button class="wm-me-btn" id="wm-me-btn">🎯 Ma position</button>';
+    document.body.appendChild(ov); $("wm-close").onclick = close;
+    $("wm-me-btn").onclick = () => { M.x = G.S.x / U; M.z = G.S.y / U; };
+    const layer = $("wm-layer"); bub = [];
+    BUILDINGS.forEach((b) => {
+      if (b.needs && !S[b.needs]) return; if (!b.name) return;
+      const el = document.createElement("button"); el.className = "wm-p"; el.textContent = b.emoji || "📍"; layer.appendChild(el);
+      el.addEventListener("click", () => { if (moved) return; if (G.jumpTo(b)) close(); });
+      bub.push({ b, el, x: (b.x + b.w / 2) / U, z: (b.y + b.h / 2) / U });
+    });
+    const me = document.createElement("div"); me.className = "wm-me"; layer.appendChild(me); bub.me = me;
+    bindDrag(); loop();
   }
-  function close() { if (ov) { ov.remove(); ov = null; document.body.classList.remove("wmapmode"); } }
-  function paint(sel) {
-    const S = G.S, z = ZONES.find((q) => q.id === zid), cur = G.curZone().id, soon = (id) => id === "aeroport" || id === "brazza";
-    const W = Math.min(window.innerWidth - 24, 520), k = W / z.w, H = Math.round(z.h * k);
-    const chips = ZONES.map((q) => '<button data-z="' + q.id + '" class="' + (q.id === zid ? "on" : "") + '">' + esc(q.name.replace(" (bientôt)", "")) + (q.id === cur ? " 📍" : "") + (soon(q.id) ? " 🔒" : "") + "</button>").join("");
-    const list = BUILDINGS.filter((b) => SHOW(b) && b.x + b.w / 2 >= z.x && b.x + b.w / 2 <= z.x + z.w && b.y + b.h / 2 >= z.y && b.y + b.h / 2 <= z.y + z.h);
-    let roads = ""; ROADS.h.forEach((r) => { if (r.y + r.h > z.y && r.y < z.y + z.h) roads += '<div class="wm-r" style="left:0;right:0;top:' + (r.y - z.y) * k + "px;height:" + r.h * k + 'px"></div>'; }); ROADS.v.forEach((r) => { if (r.x + r.w > z.x && r.x < z.x + z.w) roads += '<div class="wm-r" style="top:0;bottom:0;left:' + (r.x - z.x) * k + "px;width:" + r.w * k + 'px"></div>'; });
-    const pins = list.map((b) => '<div class="wm-b" style="left:' + (b.x - z.x) * k + "px;top:" + (b.y - z.y) * k + "px;width:" + b.w * k + "px;height:" + b.h * k + "px;background:" + (b.wall || "#ccc") + ";border-top-color:" + (b.roof || "#888") + '"></div><button class="wm-p ' + (sel && sel.id === b.id ? "on" : "") + '" data-b="' + b.id + '" style="left:' + ((b.x + b.w / 2) - z.x) * k + "px;top:" + ((b.y + b.h / 2) - z.y) * k + 'px">' + (b.emoji || "📍") + "</button>").join("");
-    const me = zid === cur ? '<div class="wm-me" style="left:' + (S.x - z.x) * k + "px;top:" + (S.y - z.y) * k + 'px"></div>' : "";
-    const dest = S.dest && zid === cur ? '<div class="wm-dest" style="left:' + (S.dest.x - z.x) * k + "px;top:" + (S.dest.y - z.y) * k + 'px">📍</div>' : "";
-    const others = window.Net && zid === cur ? Object.values(Net.players).filter((p) => !p.sc && p.x > z.x && p.x < z.x + z.w && p.y > z.y && p.y < z.y + z.h).map((p) => '<div class="wm-op" style="left:' + (p.x - z.x) * k + "px;top:" + (p.y - z.y) * k + 'px"></div>').join("") : "";
-    let sheet = "";
-    if (sel) {
-      const t = G.fareTo(sel.x + sel.w / 2, sel.y + sel.h + 30);
-      const tr = G.tripInfo(sel), tm = (s) => s < 60 ? s + " s" : Math.floor(s / 60) + " min" + (s % 60 > 4 ? " " + (s % 60) + " s" : "");
-      sheet = '<div class="wm-sheet"><h3>' + sel.emoji + " " + esc(sel.name) + "</h3><p>" + (sel.jobs ? "💼 Emplois sur place · " : sel.kind === "shop" ? "🛒 Boutique · " : "") + "à environ " + Math.round(tr.len / 10) + " m</p>" +
-        (zid === cur ? '<div class="wm-opts"><button id="wm-walk"><b>🚶 À pied</b><span>' + tm(tr.walk) + "</span></button>" + tr.veh.map((v) => '<button data-veh="' + v.id + '"><b>' + v.emoji + " " + v.name + "</b><span>" + tm(v.t) + "</span></button>").join("") + '<button id="wm-taxi"><b>🚕 Taxi</b><span>' + tm(tr.taxi) + " · " + fmt(tr.fare) + "</span></button></div>" : '<div class="wm-act"><button id="wm-tz">🚕 Taxi vers ' + esc(z.name) + "</button></div>") + "</div>";
-    } else if (zid !== cur) {
-      const t = G.taxiList().find((q) => q.z.id === zid);
-      sheet = '<div class="wm-sheet"><h3>' + esc(z.name) + "</h3>" + (soon(zid) ? "<p>🔒 Bientôt disponible.</p>" : "<p>" + (t ? "Taxi : " + fmt(t.fare) + " · à pied : " + Math.round(t.walk / 60) + " min" : "") + '</p><div class="wm-act"><button id="wm-tz">🚕 Y aller en taxi</button></div>') + "</div>";
-    }
-    ov.innerHTML = '<div class="wm-top"><button class="wm-x" id="wm-close">✕</button><div class="wm-money">💰 ' + fmt(S.money) + '</div></div><div class="wm-chips">' + chips + '</div><div class="wm-wrap"><div class="wm-map" style="width:' + W + "px;height:" + H + "px;background:" + z.ground + '">' + roads + pins + dest + others + me + "</div></div>" + sheet;
-    $("wm-close").onclick = close;
-    ov.querySelectorAll("[data-z]").forEach((b) => b.onclick = () => { zid = b.dataset.z; paint(null); });
-    ov.querySelectorAll("button[data-b]").forEach((b) => b.onclick = () => paint(BUILDINGS.find((q) => q.id === b.dataset.b)));
-    if (sel && $("wm-walk")) { $("wm-walk").onclick = () => { if (G.startAuto(sel, "")) close(); }; $("wm-taxi").onclick = () => { if (G.goTo(sel)) close(); }; ov.querySelectorAll("[data-veh]").forEach((b) => b.onclick = () => { if (G.startAuto(sel, b.dataset.veh)) close(); }); }
-    if ($("wm-tz")) $("wm-tz").onclick = () => { if (soon(zid)) return; if (G.travel(zid)) close(); };
+  function close() { if (!ov) return; cancelAnimationFrame(raf); R3D.setMap(null); ov.remove(); ov = null; document.body.classList.remove("wmapmode"); }
+  function bindDrag() {
+    const ptr = new Map(); let p0 = 0, d0 = 0;
+    ov.addEventListener("pointerdown", (e) => { if (e.target.closest(".wm-top,.wm-me-btn")) return; ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = false; if (ptr.size === 2) { const [a, b] = [...ptr.values()]; p0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; d0 = M.d; } });
+    window.addEventListener("pointermove", (e) => {
+      if (!ptr.has(e.pointerId) || !ov) return; const o = ptr.get(e.pointerId);
+      if (ptr.size >= 2) { ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); const [a, b] = [...ptr.values()]; M.d = Math.max(14, Math.min(120, d0 * p0 / (Math.hypot(a.x - b.x, a.y - b.y) || 1))); moved = true; return; }
+      const dx = e.clientX - o.x, dy = e.clientY - o.y; if (Math.hypot(dx, dy) > 3) moved = true;
+      const s = 2 * M.d * Math.tan(0.425) / window.innerHeight; M.x = Math.max(0, Math.min(120, M.x - dx * s * 1.1)); M.z = Math.max(0, Math.min(115, M.z - dy * s / Math.sin(1.1) * 1.1)); ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    });
+    ["pointerup", "pointercancel"].forEach((n) => window.addEventListener(n, (e) => { ptr.delete(e.pointerId); setTimeout(() => { moved = false; }, 60); }));
+    ov.addEventListener("wheel", (e) => { M.d = Math.max(14, Math.min(120, M.d * (e.deltaY > 0 ? 1.1 : 0.9))); }, { passive: true });
+  }
+  function loop() {
+    if (!ov) return; $("wm-money").textContent = "💰 " + fmt(G.S.money);
+    const sc = Math.max(0.5, Math.min(1.1, 48 / M.d));
+    bub.forEach((o) => { const p = R3D.proj(o.x, 2.6, o.z); if (!p) { o.el.style.display = "none"; return; } o.el.style.display = ""; o.el.style.transform = "translate(" + (p[0] - 19) + "px," + (p[1] - 38) + "px) scale(" + sc + ")"; });
+    const q = R3D.proj(G.S.x / U, 1, G.S.y / U); if (q && bub.me) bub.me.style.transform = "translate(" + (q[0] - 10) + "px," + (q[1] - 10) + "px)";
+    raf = requestAnimationFrame(loop);
   }
   document.addEventListener("click", (e) => { if (e.target.closest("#map-btn")) open(); });
   window.WorldMap = { open, close };
