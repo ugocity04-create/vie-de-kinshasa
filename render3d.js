@@ -113,7 +113,10 @@ const R3D = (function () {
   function init(canvas, overlay) {
     cv = canvas; ov = overlay; oc = ov.getContext("2d");
     gl = cv.getContext("webgl", { antialias: true, alpha: false }) || cv.getContext("experimental-webgl");
-    cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); lost = true; });
+    cv.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault(); lost = true;
+      setTimeout(() => { if (!lost || document.getElementById("gpu-x")) return; const d = document.createElement("div"); d.id = "gpu-x"; d.style.cssText = "position:fixed;inset:0;z-index:50;background:#0b1220;color:#fff;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;font:600 18px sans-serif;text-align:center;padding:24px"; d.innerHTML = "<div>😵 L'affichage 3D du téléphone s'est arrêté.<br><small style='font-weight:400;opacity:.8'>Ferme quelques onglets puis recharge. Ta partie est sauvegardée.</small></div><button style='border:none;border-radius:99px;padding:14px 28px;font-weight:800;font-size:1rem;background:#f7c948' onclick='location.reload()'>🔄 Recharger</button>"; document.body.appendChild(d); }, 2500);
+    });
     cv.addEventListener("webglcontextrestored", () => { location.reload(); });
     if (!gl) throw new Error("WebGL indisponible");
     prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
@@ -250,7 +253,7 @@ const R3D = (function () {
   let skinN = 0;
   const RGB = (v) => typeof v === "number" ? [(v >> 16 & 255) / 255, (v >> 8 & 255) / 255, (v & 255) / 255] : v;
   function person(B, x, y, z, hd, o) {
-    if (!o.sit && typeof SKIN !== "undefined" && SKIN.isReady() && skinN < 40) {
+    if (!o.sit && typeof SKIN !== "undefined" && SKIN.isReady() && !G.lite() && skinN < 10 && Math.hypot(x - tx, z - tz) < 20) {
       skinN++;
       const hairs = [[0.1, 0.07, 0.06], [0.16, 0.1, 0.07], [0.05, 0.05, 0.05]], hc = o.hair !== undefined ? RGB(o.hair) : hairs[((o.shirt[0] * 9 + o.shirt[2] * 7) * 10 | 0) % 3];
       if (SKIN.draw(B, mul(T(x, y, z), RY(hd)), 0.5 * (o.s || 1), o.mv ? "Run" : "Idle", (o.ph || 0) * (o.mv ? 0.09 : 0.06), { skin: RGB(o.skin), hair: hc, shirt: RGB(o.shirt), pants: RGB(o.pants || 0x263238) })) return;
