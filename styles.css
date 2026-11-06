@@ -124,3 +124,18 @@ body.wmapmode #hud, body.wmapmode #stick, body.wmapmode #act, body.wmapmode #toa
 #stick { display: none !important; }
 #auto-x { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4; border: none; border-radius: 99px; padding: 14px 26px; font-weight: 800; font-size: 1rem; background: #fff; color: #12203a; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
 .wm-opts { display: flex; flex-direction: column; gap: 8px; } .wm-opts button { display: flex; justify-content: space-between; align-items: center; border: none; border-radius: 16px; padding: 14px 16px; font-size: 1rem; background: #eef4fb; color: #12203a; } .wm-opts button b { font-weight: 800; } .wm-opts button span { color: #51607d; font-weight: 600; } .wm-opts #wm-taxi { background: #fff4d1; }
+
+/* décoration de la maison */
+#deco-btn { position: fixed; left: 18px; bottom: calc(26px + env(safe-area-inset-bottom)); z-index: 4; border: none; border-radius: 99px; padding: 15px 22px; font-weight: 800; font-size: 1rem; background: #fff; color: #12203a; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+body.hedit #act, body.hedit #deco-btn, body.hedit #mission { display: none !important; }
+#hedit { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: #fff; border-radius: 22px 22px 0 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px rgba(0,0,0,.3); color: #12203a; font-family: system-ui, sans-serif; max-height: 42vh; overflow: auto; }
+.he-bar { display: flex; gap: 8px; flex-wrap: wrap; } .he-bar button { border: none; border-radius: 99px; padding: 10px 14px; font-weight: 700; background: #eef1f6; color: #51607d; } .he-bar button.on { background: #12203a; color: #fff; } .he-bar .he-sell { background: #fde4e4; color: #b3261e; } .he-bar .he-ok { margin-left: auto; background: #0f8a4f; color: #fff; }
+.he-hint { color: #51607d; font-size: .85rem; margin: 8px 2px; }
+.he-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; } .he-row button { flex: none; width: 92px; border: none; border-radius: 16px; padding: 10px 4px; background: #eef4fb; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #12203a; } .he-row span { font-size: 1.8rem; } .he-row b { font-size: .8rem; } .he-row i { font-style: normal; font-size: .72rem; color: #0f8a4f; font-weight: 700; }
+.he-sty { margin-bottom: 8px; } .he-sty div { display: flex; gap: 8px; margin-top: 6px; } .he-sty button { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(0,0,0,.12); } .he-sty button.on { border-color: #0f8a4f; }
+
+/* grande carte 3D */
+#wmap { background: transparent !important; overflow: hidden !important; touch-action: none; }
+#wm-layer { position: absolute; inset: 0; pointer-events: none; } #wm-layer .wm-p { position: absolute; left: 0; top: 0; pointer-events: auto; transform-origin: 50% 100%; margin: 0; }
+#wm-layer .wm-me { position: absolute; left: 0; top: 0; }
+.wm-me-btn { position: absolute; left: 14px; bottom: calc(24px + env(safe-area-inset-bottom)); border: none; border-radius: 99px; padding: 14px 20px; font-weight: 800; background: #fff; color: #12203a; box-shadow: 0 5px 16px rgba(0,0,0,.3); }
