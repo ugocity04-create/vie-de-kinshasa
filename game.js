@@ -449,6 +449,15 @@
     if (drag && e.target === gc) { R3D.addYaw(-(e.clientX - drag.x) * 0.008); drag.x = e.clientX; } ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
   });
   ["pointerup", "pointercancel"].forEach((n) => window.addEventListener(n, (e) => { ptr.delete(e.pointerId); if (!ptr.size) drag = null; }));
+  // affiche l'erreur à l'écran (pour trouver les bugs sur téléphone)
+  let errShown = 0;
+  function showErr(e) {
+    const msg = String(e && (e.stack || e.message) || e).split("\n").slice(0, 3).join(" | ").slice(0, 400); if (errShown++ > 3) return;
+    let d = document.getElementById("err-x"); if (!d) { d = document.createElement("div"); d.id = "err-x"; d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:60;background:#7f1d1d;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:10px;word-break:break-all"; d.onclick = () => d.remove(); document.body.appendChild(d); }
+    d.textContent = "⚠️ " + msg;
+  }
+  window.addEventListener("error", (ev) => showErr(ev.error || ev.message));
+  window.addEventListener("unhandledrejection", (ev) => showErr(ev.reason));
   const U = 20; // 20 pixels de la carte = 1 unité 3D (comme dans render3d.js)
   // toucher le sol (ou un meuble) : le personnage y va tout seul
   let tap0 = null;
@@ -482,7 +491,8 @@
     const dt = Math.min(0.05, (ts - last) / 1000); last = ts; update(dt); Net.tick(dt); Phone.tick(dt);
     if (S.started) { Net.sendPos(dt, scene ? ip.x : S.x, scene ? ip.y : S.y, scene ? scene.id : null, S.hd || 0, pl.moving); Sound.tick(dt, { walking: pl.moving, moto: S.moto, scene: !!scene, raining: raining > 0, night: darkness() > 0.5 }); }
     if (S.dest && Math.hypot(S.dest.x - S.x, S.dest.y - S.y) < 70) { toast("📍 Arrivé : " + S.dest.name); cancelAuto(); }
-    R3D.render(dt); requestAnimationFrame(frame);
+    try { R3D.render(dt); } catch (e) { showErr(e); }
+    requestAnimationFrame(frame);
   }
   function netStart() { let url = SERVER_URL; try { url = localStorage.getItem("lvk-server") || url; } catch (e) {} Net.connect(url, S.name, netLook(), Auth.token()); }
   // TAXI : voyager vers un quartier contre de l'argent (ou marcher, plus long)
