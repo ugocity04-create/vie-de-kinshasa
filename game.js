@@ -294,10 +294,17 @@
   }
 
   // ====== BÂTIMENTS ET INTÉRIEURS ======
+  // la maison du joueur : meubles achetés et placés par lui
+  let hsel = null;
+  function homeRoom() {
+    if (!S.house) S.house = HCAT.filter((c) => c.start).map((c, i) => { const o = { id: "s" + i, k: c.k, x: c.start[0], y: c.start[1], w: c.w, h: c.h }; if (c.act) { o.act = c.act; o.label = c.label; } return o; });
+    const hs = S.hs || (S.hs = { floor: HSTYLES.floor[0][0], wall: HSTYLES.wall[0][0] }); return { floor: hs.floor, wall: hs.wall, items: S.house };
+  }
+  function reroom() { if (scene && scene.kind === "home") { room = homeRoom(); } save(); }
   function enter(b) {
     if (b.kind === "kiosk") return openModal(b.emoji + " " + b.name, "", (box) => addText(box, T.kioskInfo));
     if (!isOpen(b)) return toast(T.opensAt + b.open[0] + T.to + b.open[1] + "h");
-    scene = b; room = interiorFor(b); ip = { x: 240, y: 455, face: 1 }; near = null; $("act").hidden = true;
+    scene = b; room = b.kind === "home" ? homeRoom() : interiorFor(b); ip = { x: 240, y: 455, face: 1 }; near = null; $("act").hidden = true;
     if (b.kind === "home") S.stats.houses++; Sound.play("door");
     save();
   }
@@ -378,6 +385,7 @@
       BUILDINGS.forEach((b) => { if (!active(b) || b.kind === "deco" || b.kind === "stall") return; const d = Math.hypot(S.x - (b.x + b.w / 2), S.y - (b.y + b.h + 8)); if (d < best) { best = d; near = b; } });
       if (near) label = near.emoji + " " + T.enter;
     }
+    $("deco-btn").hidden = !(scene && scene.kind === "home" && !(window.HouseEdit && HouseEdit.on));
     const act = $("act"); act.hidden = !(label && !busy); if (label) act.textContent = label;
     if (fireNext) { fireNext = false; if (nearItem && !busy) onAct(); }
     if (!scene) { const z = ZONES.find((q) => inRect(S.x, S.y, q)); const zn = z ? z.name : ""; if (zn && zn !== lastZone) { lastZone = zn; toast("📍 " + zn); if (!S.stats.zones.includes(zn)) S.stats.zones.push(zn); } }
@@ -446,7 +454,7 @@
   let tap0 = null;
   gc.addEventListener("pointerdown", (e) => { tap0 = ptr.size === 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
   gc.addEventListener("pointerup", (e) => {
-    const t0 = tap0; tap0 = null; if (!t0 || !S.started || ff || !$("modal").hidden || Math.hypot(e.clientX - t0.x, e.clientY - t0.y) > 12 || performance.now() - t0.t > 450) return;
+    const t0 = tap0; tap0 = null; if (window.HouseEdit && HouseEdit.on) return; if (!t0 || !S.started || ff || !$("modal").hidden || Math.hypot(e.clientX - t0.x, e.clientY - t0.y) > 12 || performance.now() - t0.t > 450) return;
     const r = gc.getBoundingClientRect();
     if (scene) {
       const p = R3D.unproject(e.clientX - r.left, e.clientY - r.top, 0); if (!p) return; const x = p.x * U, y = p.z * U;
@@ -536,6 +544,24 @@
     let ok = false; for (let r = 0; r < 300 && !ok; r += 15) for (let a = 0; a < 6.28 && !ok; a += 0.5) { const x = b.x + b.w / 2 + Math.cos(a) * r, y = b.y + b.h + 30 + Math.sin(a) * r; if (!blocked(x, y)) { S.x = x; S.y = y; ok = true; } }
     S.energy -= 1; stats(); save(); toast("📍 " + b.name); return true;
   }
+  function fadeTo(txt, ms, mid) {
+    let f = document.getElementById("fade"); if (!f) { f = document.createElement("div"); f.id = "fade"; f.style.cssText = "position:fixed;inset:0;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font:700 20px sans-serif;opacity:0;transition:opacity .35s;z-index:20;pointer-events:none"; document.body.appendChild(f); }
+    f.textContent = txt; f.style.opacity = 1; setTimeout(() => { mid(); f.style.opacity = 0; }, ms);
+  }
+  // carte : toucher un endroit = y aller directement (gratuit dans le quartier, taxi si autre quartier)
+  function jumpTo(b) {
+    if (scene || ff) { toast("Sors d'abord du bâtiment."); return false; }
+    const d = doorOf(b), cz = ZONES.find((q) => d.x >= q.x && d.x <= q.x + q.w && d.y >= q.y && d.y <= q.y + q.h) || curZone();
+    if (ZSOON.includes(cz.id)) { toast("🔒 Bientôt disponible."); return false; }
+    const other = cz.id !== curZone().id; if (other) { const t = taxiInfo(cz); if (S.money < t.fare) { toast("Pas assez d'argent pour le taxi (" + fmt(t.fare) + ")."); return false; } money(-t.fare, "Taxi vers " + cz.name); Sound.play("door"); }
+    cancelAuto();
+    fadeTo(other ? "🚕 Taxi vers " + cz.name + "…" : "📍 " + b.name, other ? 1400 : 500, () => {
+      if (other) S.zone = cz.id; let ok = false;
+      for (let r = 0; r < 300 && !ok; r += 15) for (let a = 0; a < 6.28 && !ok; a += 0.5) { const x = d.x + Math.cos(a) * r, y = d.y + Math.sin(a) * r; if (!blocked(x, y)) { S.x = x; S.y = y; ok = true; } }
+      if (other) S.energy -= 2; stats(); save(); toast("📍 " + b.name);
+    });
+    return true;
+  }
   function setDest(b) { S.dest = b ? { id: b.id, name: b.name, x: b.x + b.w / 2, y: b.y + b.h + 20 } : null; if (b) toast("📍 Repère posé : " + b.name); save(); }
   function travel(id) {
     if (scene || ff) { toast("Sors d'abord du bâtiment."); return false; }
@@ -577,7 +603,7 @@
       b.jobs.forEach((id) => { const j = JOBS.find((q) => q.id === id); if (j && z) out.push({ j, b, z, locked: S.rep < j.rep }); }); });
     return out.sort((a, b) => a.j.pay - b.j.pay);
   }
-  window.G = { tripInfo, startAuto, cancelAuto, fareTo, goTo, setDest, avatarEditor, av, netLook, VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
+  window.G = { reroom, setSel(o) { hsel = o; }, get sel() { return hsel; }, pay(n, l) { money(-n, l); stats(); }, toast, save, jumpTo, tripInfo, startAuto, cancelAuto, fareTo, goTo, setDest, avatarEditor, av, netLook, VEHS, HOUSE_PRICE, buyVeh, useVeh, buyHouse, jobBoard, inZone(x, y, m) { const z = curZone(); m = m === undefined ? 130 : m; return !z || (x > z.x - m && x < z.x + z.w + m && y > z.y - m && y < z.y + z.h + m); }, curZone, taxiList, travel, get S() { return S; }, get scene() { return scene; }, get room() { return room; }, get ip() { return ip; }, get pl() { return pl; }, get near() { return near; }, get nearItem() { return nearItem; }, get raining() { return raining; }, get time() { return time; },
     cars, npcs, boats, trees, lamps, darkness, nowH, fmt, hh, toast, save, lite: () => lite, setLite(b) { lite = b; try { localStorage.setItem("lvk-lite", b ? "1" : "0"); } catch (e) {} resize(); } };
   window.__lvk = { get S() { return S; }, BUILDINGS, enter, leave, onAct, setHour(h) { fakeHour = h; }, get scene() { return scene; }, get ff() { return ff; }, get ip() { return ip; }, doItem, get room() { return room; } };
   R3D.setZoom(1.45);
