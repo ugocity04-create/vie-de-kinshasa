@@ -385,7 +385,7 @@
       BUILDINGS.forEach((b) => { if (!active(b) || b.kind === "deco" || b.kind === "stall") return; const d = Math.hypot(S.x - (b.x + b.w / 2), S.y - (b.y + b.h + 8)); if (d < best) { best = d; near = b; } });
       if (near) label = near.emoji + " " + T.enter;
     }
-    $("deco-btn").hidden = !(scene && scene.kind === "home" && !(window.HouseEdit && HouseEdit.on));
+    const db = $("deco-btn"); if (db) db.hidden = !(scene && scene.kind === "home" && !(window.HouseEdit && HouseEdit.on));
     const act = $("act"); act.hidden = !(label && !busy); if (label) act.textContent = label;
     if (fireNext) { fireNext = false; if (nearItem && !busy) onAct(); }
     if (!scene) { const z = ZONES.find((q) => inRect(S.x, S.y, q)); const zn = z ? z.name : ""; if (zn && zn !== lastZone) { lastZone = zn; toast("📍 " + zn); if (!S.stats.zones.includes(zn)) S.stats.zones.push(zn); } }
